@@ -10,7 +10,7 @@ and it uses MPI to distribute the workload among several processing
 units.
 
 The full source code of the program can be found in the PDF document
-[dacapo_calibration.pdf](https://github.com/ziotom78/dacapo_calibration/dacapo_calibration.pdf).
+[dacapo_calibration.pdf](https://github.com/ziotom78/dacapo_calibration/blob/master/dacapo_calibration.pdf).
 
 ## Installation
 
@@ -31,7 +31,7 @@ accepted:
 ## License
 
 The code is released under a permissive MIT license. See the file
-[LICENSE](https://github.com/ziotom78/dacapo_calibration/LICENSE).
+[LICENSE](https://github.com/ziotom78/dacapo_calibration/blob/master/LICENSE).
 
 ## Citation
 
