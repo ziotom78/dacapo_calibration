@@ -22,6 +22,8 @@
 \usepackage[bitstream-charter]{mathdesign}
 \usepackage[T1]{fontenc}
 
+\newcommand{\DaCapo}{\texttt{Da\,Capo}}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \DeclareTextCommandDefault{\nobreakspace}{\leavevmode\nobreak\ }
@@ -54,7 +56,7 @@
 \fancyhf{}
 \fancyhead[L,RO]{\bfseries\thepage}
 \fancyhead[LO]{\bfseries\rightmark}
-\fancyhead[RE]{\bfseries CORE calibration}
+\fancyhead[RE]{\bfseries \DaCapo{} calibration}
 
 \fancypagestyle{plain}{%
   \fancyhf{}
@@ -80,7 +82,7 @@
   pdftitle={Calibrating TODs using the DaCapo algorithm},
   pdfauthor=Maurizio Tomasi,
   pdfsubject={Commented implementation of a Python program to simulate
-  the calibration of CORE TODs},
+  the calibration of TODs},
   pdfkeywords={CMB {data analysis} {optics}},
   pdfborder={0 0 0},
   linkcolor  = mylinkcolor!\myshade!black,
@@ -90,9 +92,6 @@
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\newcommand{\CORE}{\textsc{Core}}
-\newcommand{\DaCapo}{\texttt{Da\,Capo}}
 
 \begin{document}
 
@@ -571,6 +570,9 @@ the following dependencies:
   \item Click (\url{http://click.pocoo.org/5/}), for implementing a
         smart command-line interface;
 
+  \item Autopep8, to nicely re-indent the Python files produced by
+        Noweb;
+
   \item A fortran compiler that is supported by [[f2py]] ([[gfortran]]
         and Intel Fortran compiler are ok);
 \end{enumerate}
@@ -589,6 +591,7 @@ at the following URL:
     [[NOTANGLE]]& [[notangle]]& Part of Noweb\\
     [[CPIF]]& [[cpif]]& Part of Noweb\\
     [[TEX2PDF]]& [[lualatex]]& \\
+    [[BIBTEX]]& [[bibtex]]& \\
     [[PYTHON]]& [[python3]]& \\
     [[AUTOPEP8]]& [[autopep8]]& You can use [[yapf]] as an alternative\\
     [[DOCKER]]& [[sudo docker]]& You might want to remove [[sudo]]\\
@@ -664,6 +667,7 @@ RUN conda install \
     pytest \
     scipy
 RUN pip install \
+    autopep8 \
     healpy \
     quaternionarray
 CMD git clone https://github.com/ziotom78/dacapo_calibration && \
@@ -1130,9 +1134,9 @@ record the length of each offset period in the index file.
 
 There are many ways to compute how many samples should be in each
 offset period. The most simple formula considers the sampling
-frequency $\nu_\text{samp}$ of the data ($\nu_\text{samp} =
-175\,\text{Hz}$ for the CORE detectors), and assigns to each period
-a number of samples $N$ equal to
+frequency $\nu_\text{samp}$ of the data (typical values fall in the
+range 10--$100$\,\text{Hz}), and assigns to each period a number of
+samples $N$ equal to
 \begin{equation}
 N = \nu_\text{samp} \times \Delta t,
 \end{equation}
@@ -1197,7 +1201,7 @@ def split_into_periods(time_array, period_length, periods):
         period_idx += 1
 @ %def split_into_periods
 As an example, consider the following script:
-\verbatiminput{test_split_into_periods.py}
+\verbatiminput{scripts/test_split_into_periods.py}
 The output is:
 \verbatiminput{test_split_into_periods.txt}
 
@@ -2293,7 +2297,7 @@ def split_into_n(length: int, num_of_segments: int):
 @ %def split_into_n
 
 If we test [[split_into_n]] with the following script:
-\verbatiminput{test_split_into_n.py}
+\verbatiminput{scripts/test_split_into_n.py}
 then the output is:
 \verbatiminput{test_split_into_n.txt}
 which is slightly different from the figure above because it follows
@@ -2328,7 +2332,7 @@ approximation, as not every segment will end up having this number of
 baselines. For instance, if we want to split 10 offset baselines in a
 set of calibration baselines, each having roughly 4 of them, the
 script
-\verbatiminput{test_split.py}
+\verbatiminput{scripts/test_split.py}
 produces
 \verbatiminput{test_split.txt}
 which is the most even distribution possible with these constraints:
@@ -2411,7 +2415,7 @@ The powerfulness of [[f2py]] is that it is able to parse the
 definition of routines like [[sum_subranges]] and produce a
 NumPy-friendly interface. The following script tests
 [[sum_subranges]]:
-\verbatiminput{test_sum_subranges.py}
+\verbatiminput{scripts/test_sum_subranges.py}
 The call asks to return a vector of two elements, containing the sum
 of the first three ($1+2+3$) and last two ($4 + 5$) elements of array.
 The output is:
@@ -2577,7 +2581,7 @@ samples_in_file = 0
 
 How does our implementation perform against the example case we
 presented above? Let's test it with the following code:
-\verbatiminput{test_assign_files_to_processes.py}
+\verbatiminput{scripts/test_assign_files_to_processes.py}
 
 The code builds three fake [[TODFileInfo]] objects, each with the same
 number of samples in it (12). Then, it asks to assign the
@@ -2729,11 +2733,11 @@ we apply the \DaCapo{} calibration code.
 
 \section{Estimation of the dipole signal}
 
-To calibrate CORE data, we need to have some function to estimate the
-amplitude of the dipole signal given some pointing direction towards
-the sky. The formula which relates the temperature of the dipole $D$
-to the speed of the spacecraft rest frame at time $t$ along direction
-$\vect{x}$ is
+To calibrate a stream of raw measurements, we need to have some
+function to estimate the amplitude of the dipole signal given some
+pointing direction towards the sky. The formula which relates the
+temperature of the dipole $D$ to the speed of the spacecraft rest
+frame at time $t$ along direction $\vect{x}$ is
 \begin{equation}
 \label{eq:dipole}
 D(\vect{x}, t) = T_\mathrm{CMB} \left(\frac1{\gamma(t) \bigl(1 -
@@ -2822,7 +2826,7 @@ else:
 
 As a reference, the following code produces the map shown in
 Fig.~\ref{fig:testDipoleTemperature}:
-\verbatiminput{test_dipole_temperature.py}
+\verbatiminput{scripts/test_dipole_temperature.py}
 The velocity of the Solar System ([[solsys_speed_vec_m_s]]) is the one
 measured by \citet{planck2015.lfi.calibration}, and it is expressed in
 the Ecliptic coordiante system.

@@ -22,6 +22,7 @@ accepted:
 - `NOTANGLE`
 - `CPIF`
 - `TEX2PDF`
+- `BIBTEX`
 - `PYTHON`
 - `AUTOPEP8`
 - `DOCKER`

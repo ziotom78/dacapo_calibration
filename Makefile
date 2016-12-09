@@ -2,7 +2,8 @@
 
 NOWEAVE ?= noweave
 NOTANGLE ?= notangle
-TEXI2PDF ?= lualatex
+TEX2PDF ?= lualatex
+BIBTEX ?= bibtex
 CPIF ?= cpif
 PYTHON ?= python3
 AUTOPEP8 ?= autopep8
@@ -69,7 +70,10 @@ docker: docker/Dockerfile
 	@echo "    docker run --name dacapo \"ziotom78:dacapo\""
 
 dacapo_calibration.pdf: dacapo_calibration.tex dacapo_calibration.bbl $(DEPS)
-	$(TEXI2PDF) $< && $(TEXI2PDF) $<
+	$(TEX2PDF) $< && $(TEX2PDF) $<
+
+dacapo_calibration.bbl: dacapo_calibration.bib
+	$(BIBTEX) dacapo_calibration
 
 docker/Dockerfile: dacapo_calibration.nw
 	$(NOTANGLE) -RDockerfile $^ | $(CPIF) $@

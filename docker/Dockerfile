@@ -22,6 +22,7 @@ RUN conda install \
     pytest \
     scipy
 RUN pip install \
+    autopep8 \
     healpy \
     quaternionarray
 CMD git clone https://github.com/ziotom78/dacapo_calibration && \
