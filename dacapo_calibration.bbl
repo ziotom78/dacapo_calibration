@@ -1,0 +1,55 @@
+\begin{thebibliography}{6}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[{Burigana} et~al.(1999){Burigana}, {Malaspina}, {Mandolesi}, {Danse},
+  {Maino}, {Bersanelli}, and {Maltoni}]{burigana.1997.destriping}
+C.~{Burigana}, M.~{Malaspina}, N.~{Mandolesi}, L.~{Danse}, D.~{Maino},
+  M.~{Bersanelli}, and M.~{Maltoni}.
+\newblock A preliminary study on destriping techniques of planck/lfi
+  measurements versus observational strategy.
+\newblock \emph{ArXiv Astrophysics e-prints}, June 1999.
+
+\bibitem[{Keih{\"a}nen} et~al.(2004){Keih{\"a}nen}, {Kurki-Suonio}, {Poutanen},
+  {Maino}, and {Burigana}]{keihanen2004}
+E.~{Keih{\"a}nen}, H.~{Kurki-Suonio}, T.~{Poutanen}, D.~{Maino}, and
+  C.~{Burigana}.
+\newblock A maximum likelihood approach to the destriping technique.
+\newblock \emph{A\&A}, 428:\penalty0 287--298, December 2004.
+\newblock \doi{10.1051/0004-6361:200400060}.
+
+\bibitem[{Keih{\"a}nen} et~al.(2005){Keih{\"a}nen}, {Kurki-Suonio}, and
+  {Poutanen}]{keihanen2005}
+E.~{Keih{\"a}nen}, H.~{Kurki-Suonio}, and T.~{Poutanen}.
+\newblock Madam -- a map-making method for cmb experiments.
+\newblock \emph{MNRAS}, 360:\penalty0 390--400, June 2005.
+\newblock \doi{10.1111/j.1365-2966.2005.09055.x}.
+
+\bibitem[{Kurki-Suonio} et~al.(2009){Kurki-Suonio}, {Keih{\"a}nen},
+  {Keskitalo}, {Poutanen}, {Sirvi{\"o}}, {Maino}, and
+  {Burigana}]{kurki-suonio2009}
+H.~{Kurki-Suonio}, E.~{Keih{\"a}nen}, R.~{Keskitalo}, T.~{Poutanen}, {A.-S.}
+  {Sirvi{\"o}}, D.~{Maino}, and C.~{Burigana}.
+\newblock Destriping cmb temperature and polarization maps.
+\newblock \emph{A\&A}, 506:\penalty0 1511--1539, November 2009.
+\newblock \doi{10.1051/0004-6361/200912361}.
+
+\bibitem[{{Planck Collaboration}}(2015)]{planck2015.lfi.calibration}
+{{Planck Collaboration}}.
+\newblock Planck 2015 results. v. {LFI} calibration.
+\newblock \emph{Astronomy {\&} Astrophysics}, dec 2015.
+\newblock \doi{10.1051/0004-6361/201526632}.
+\newblock URL \url{http://dx.doi.org/10.1051/0004-6361/201526632}.
+
+\bibitem[Strikwerda(2004)]{Strikwerda_2004}
+John~C. Strikwerda.
+\newblock \emph{Finite Difference Schemes and Partial Differential Equations,
+  Second Edition}.
+\newblock Society for Industrial {\&} Applied Mathematics ({SIAM}), jan 2004.
+\newblock \doi{10.1137/1.9780898717938}.
+\newblock URL \url{http://dx.doi.org/10.1137/1.9780898717938}.
+
+\end{thebibliography}
