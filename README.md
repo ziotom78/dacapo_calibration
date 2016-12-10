@@ -24,10 +24,18 @@ accepted:
 - `TEX2PDF`
 - `BIBTEX`
 - `PYTHON`
+- `F2PY`
 - `AUTOPEP8`
 - `DOCKER`
 - `MPIRUN`
 - `INKSCAPE`
+- `MV`
+
+## Example
+
+In the directory `examples` you will find a couple of parameter files
+for `index.py` and `calibrate.py`. Refer to the PDF documentation for
+a full reference of each parameter.
 
 ## License
 
