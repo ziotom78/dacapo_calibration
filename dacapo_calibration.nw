@@ -647,16 +647,19 @@ FROM continuumio/miniconda3
 
 MAINTAINER Maurizio Tomasi <maurizio.tomasi@unimi.it>
 
-RUN apt-get -y upgrade
-RUN apt-get install -y \
+RUN apt-get -y update && \
+    apt-get -y upgrade && \
+    apt-get install -y \
     apt-utils \
     g++ \
     gcc \
     git \
+    inkscape \
     make \
     noweb \
     openmpi-bin \
-    texlive-latex-base
+    texlive-latex-base \
+    texlive-latex-extra
 RUN conda install \
     astropy \
     click \
