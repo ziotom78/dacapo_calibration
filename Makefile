@@ -6,6 +6,7 @@ TEX2PDF ?= lualatex
 BIBTEX ?= bibtex
 CPIF ?= cpif
 PYTHON ?= python3
+F2PY ?= f2py
 AUTOPEP8 ?= autopep8
 DOCKER ?= sudo docker
 MPIRUN ?= mpirun -n 2
@@ -52,7 +53,7 @@ fullcheck: check index.py calibrate.py check-gains.py long_test_files
 	$(MPIRUN) $$(PYTHON) ./calibrate.py test_files/long_test_calibrate_full.ini && \
 	$(PYTHON) ./check-gains.py test_files/long_test_tod.fits test_files/long_test_results_full.fits
 
-long_test_files: create-test-files.py test_files/long_test_tod.fits test_files/long_test_hits.fits
+long_test_files: create-test-files.py test_files/long_test_tod.fits test_files/long_test_hits.fits.gz
 	$(PYTHON) ./create-test-files.py test_files
 
 help:
@@ -82,17 +83,18 @@ docker/Dockerfile: dacapo_calibration.nw
 figures/core_scan_example.pdf: figures/core_scan_example.fits figures/core_scan_example.py
 	$(PYTHON) figures/core_scan_example.py figures/core_scan_example.fits $@
 
-calibrate.py: dacapo_calibration.nw ftnroutines.f90
+# For this recipe, *first* build the .so library, then build calibrate.py. In this
+# way, if f2py fails, calibrate.py is not generated and the rule will be reapplied
+# the next time "make" is called
+calibrate.py: dacapo_calibration.nw
+	$(NOTANGLE) -Rftnroutines.f90 $^ | $(CPIF) ftnroutines.f90 && \
+		$(F2PY) -c -m ftnroutines --f90flags=-std=f2003 ftnroutines.f90
 	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
 	$(AUTOPEP8) --in-place $@
 
 index.py: dacapo_calibration.nw
 	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
 	$(AUTOPEP8) --in-place $@
-
-ftnroutines.f90: dacapo_calibration.nw
-	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
-	f2py -c -m ftnroutines --f90flags=-std=f2003 ftnroutines.f90
 
 %.tex: %.nw
 	$(NOWEAVE) -n -delay -index $< | $(CPIF) $@
@@ -119,7 +121,7 @@ test_assign_files_to_processes.txt: calibrate.py scripts/test_assign_files_to_pr
 test_sum_subranges.txt: calibrate.py scripts/test_sum_subranges.py
 	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) scripts/test_sum_subranges.py | $(CPIF) $@
 
-figures/test_dipole_temperature.pdf: calibrate.py scripts/test_dipole_temperature.py
+figures/test_dipole_temperature.pdf: calibrate.py  scripts/test_dipole_temperature.py
 	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) scripts/test_dipole_temperature.py && \
 		$(MV) test_dipole_temperature.pdf figures/
 
