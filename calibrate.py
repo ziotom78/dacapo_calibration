@@ -282,7 +282,7 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
     try:
         input_sect = conf_file['input_files']
 
-        index_file = input_sect.get('index_file')
+        index_file = input_sect.get('index_file', None)
         signal_hdu = int_or_str(input_sect.get('signal_hdu'))
         signal_column = int_or_str(input_sect.get('signal_column'))
         pointing_hdu = int_or_str(input_sect.get('pointing_hdu'))
@@ -825,11 +825,15 @@ DEFAULT_LOGFILE_MASK = 'calibrate_%04d.log'
 @click.option('--full-log/--no-full-log', 'full_log_flag',
               help='Make every MPI process write log message to files'
               ' (use --logfile to specify the file name)')
+@click.option('-i', '--index-file', 'indexfile_path', default=None, type=str,
+              help='Specify the path to the index file to use '
+              '(overrides the one specified in the parameter file).')
 @click.option('--logfile', 'logfile_mask', default=DEFAULT_LOGFILE_MASK,
               help='Prints (a subset of) logging messages on the screen'
               ' (default is "{0}")'.format(DEFAULT_LOGFILE_MASK))
 def calibrate_main(configuration_file: str, debug_flag: bool,
-                   full_log_flag: bool, logfile_mask):
+                   full_log_flag: bool, logfile_mask: str,
+                   indexfile_path: str):
     mpi_comm = MPI.COMM_WORLD
     mpi_size = mpi_comm.Get_size()
     mpi_rank = mpi_comm.Get_rank()
@@ -852,6 +856,14 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
     log.info('reading configuration file "%s"', configuration_file)
     configuration = read_calibrate_conf_file(configuration_file)
     log.info('configuration file read successfully')
+
+    if indexfile_path is not None:
+        configuration.index_file = indexfile_path
+
+    if configuration.index_file is None:
+        log.error('error: you must specify an index file, either in the '
+                  'parameter file or using the --index-file switch')
+        sys.exit(1)
     index = IndexFile()
     index.load_from_fits(configuration.index_file)
     samples_per_ofsp = index.periods
