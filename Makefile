@@ -10,6 +10,7 @@ AUTOPEP8 ?= autopep8
 DOCKER ?= sudo docker
 MPIRUN ?= mpirun -n 2
 INKSCAPE ?= inkscape
+MV ?= mv
 
 DEPS = \
 	figures/TOD_indexing.pdf \
@@ -119,7 +120,8 @@ test_sum_subranges.txt: calibrate.py scripts/test_sum_subranges.py
 	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) scripts/test_sum_subranges.py | $(CPIF) $@
 
 figures/test_dipole_temperature.pdf: calibrate.py scripts/test_dipole_temperature.py
-	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) scripts/test_dipole_temperature.py
+	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) scripts/test_dipole_temperature.py && \
+		$(MV) test_dipole_temperature.pdf figures/
 
 figures/1fnoise.pdf: figures/noise.dat figures/noise_plot.py
 	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) figures/noise_plot.py figures/noise.dat $@
