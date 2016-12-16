@@ -2832,10 +2832,12 @@ dipole_map = get_dipole_temperature(t_cmb_k=configuration.t_cmb_k,
 @
 
 Finally, the monopole map should be a map where each pixel is equal to
-one, but with the masked pixel chopped to zero:
+one, but with the masked pixel chopped to zero. Masked pixels in the
+dipole map should be set to zero as well:
 <<Build the monopole and dipole maps>>=
 if mask is not None:
     monopole_map = mask
+    dipole_map *= mask
 else:
     monopole_map = np.ones_like(dipole_map)
 @

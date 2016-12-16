@@ -911,6 +911,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                                         directions=directions)
     if mask is not None:
         monopole_map = mask
+        dipole_map *= mask
     else:
         monopole_map = np.ones_like(dipole_map)
     try:
