@@ -652,11 +652,11 @@ class FullPreconditioner:
 
     def compute_offset_errors(self, voltages, samples_per_ofsp):
         rms = compute_rms(voltages, samples_per_ofsp)
-        return np.sqrt(rms / np.array([np.diag(x)[:-1] for x in self.matrices]).flatten())
+        return np.sqrt(rms * np.array([np.diag(x)[:-1] for x in self.matrices]).flatten())
 
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
-        return np.sqrt(rms / np.array([np.diag(x)[-1] for x in self.matrices]))
+        return np.sqrt(rms * np.array([np.diag(x)[-1] for x in self.matrices]))
 
 
 class JacobiPreconditioner:
@@ -696,11 +696,11 @@ class JacobiPreconditioner:
 
     def compute_offset_errors(self, voltages, samples_per_ofsp):
         rms = compute_rms(voltages, samples_per_ofsp)
-        return np.sqrt(rms / self.diagonal.offsets)
+        return np.sqrt(rms * self.diagonal.offsets)
 
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
-        return np.sqrt(rms / self.diagonal.gains)
+        return np.sqrt(rms * self.diagonal.gains)
 PCOND_DICT = {'none': None,
               'full': FullPreconditioner,
               'jacobi': JacobiPreconditioner}

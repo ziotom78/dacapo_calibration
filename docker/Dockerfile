@@ -8,6 +8,7 @@ RUN apt-get -y update && \
     apt-utils \
     g++ \
     gcc \
+    gfortran \
     git \
     inkscape \
     make \

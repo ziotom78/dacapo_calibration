@@ -593,6 +593,7 @@ at the following URL:
     [[TEX2PDF]]& [[lualatex]]& \\
     [[BIBTEX]]& [[bibtex]]& \\
     [[PYTHON]]& [[python3]]& \\
+    [[F2PY]]& [[f2py]]& Bundled with NumPy\\
     [[AUTOPEP8]]& [[autopep8]]& You can use [[yapf]] as an alternative\\
     [[DOCKER]]& [[sudo docker]]& You might want to remove [[sudo]]\\
     [[MPIRUN]]& [[mpirun -n 2]]& Used for the integration tests\\
@@ -653,6 +654,7 @@ RUN apt-get -y update && \
     apt-utils \
     g++ \
     gcc \
+    gfortran \
     git \
     inkscape \
     make \
@@ -4311,11 +4313,11 @@ class FullPreconditioner:
 
     def compute_offset_errors(self, voltages, samples_per_ofsp):
         rms = compute_rms(voltages, samples_per_ofsp)
-        return np.sqrt(rms / np.array([np.diag(x)[:-1] for x in self.matrices]).flatten())
+        return np.sqrt(rms * np.array([np.diag(x)[:-1] for x in self.matrices]).flatten())
 
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
-        return np.sqrt(rms / np.array([np.diag(x)[-1] for x in self.matrices]))
+        return np.sqrt(rms * np.array([np.diag(x)[-1] for x in self.matrices]))
 @ %def FullPreconditioner
 
 In the [[FullPreconditioner.__init__]] method, we calculate each of
@@ -4411,18 +4413,18 @@ class JacobiPreconditioner:
                                     samples_per_gainp=samples_per_gainp)
 
         <<Compute the inverses of the hit counts and save them in [[self.diagonal]]>>
-        <<Compute the inverses of the squared gains and save them in [[self.diagonal]]>>
+        <<Compute the inverses of the squared dipole amplitudes and save them in [[self.diagonal]]>>
 
     def apply_to(self, a: OfsAndGains) -> OfsAndGains:
         return ofs_and_gains_with_same_lengths(a, a.a_vec * self.diagonal.a_vec)
 
     def compute_offset_errors(self, voltages, samples_per_ofsp):
         rms = compute_rms(voltages, samples_per_ofsp)
-        return np.sqrt(rms / self.diagonal.offsets)
+        return np.sqrt(rms * self.diagonal.offsets)
 
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
-        return np.sqrt(rms / self.diagonal.gains)
+        return np.sqrt(rms * self.diagonal.gains)
 @ %def JacobiPreconditioner
 
 In the case of the Jacobi preconditioner, there is no need to play
@@ -4448,7 +4450,7 @@ for row_idx, cur_sample_num in enumerate(samples_per_ofsp):
 The gain part requires us to access [[dipole_map]], which we had
 previously set to zero in each pixel that was masked. So the following
 code automatically takes into account the presence of any mask:
-<<Compute the inverses of the squared gains and save them in [[self.diagonal]]>>=
+<<Compute the inverses of the squared dipole amplitudes and save them in [[self.diagonal]]>>=
 cur_sample_idx = 0
 gains = self.diagonal.gains
 for row_idx, cur_sample_num in enumerate(samples_per_gainp):
