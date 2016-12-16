@@ -99,10 +99,6 @@ index.py: dacapo_calibration.nw
 %.tex: %.nw
 	$(NOWEAVE) -n -delay -index $< | $(CPIF) $@
 
-./%.py: dacapo_calibration.nw
-	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
-	$(AUTOPEP8) --in-place $@
-
 %.pdf: %.svg
 	$(INKSCAPE) --export-pdf=$@ $<
 
