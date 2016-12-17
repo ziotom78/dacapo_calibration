@@ -41,7 +41,7 @@ DEPS = \
 
 all: calibrate.py index.py dacapo_calibration.pdf dacapo-test.py
 
-check: all
+check: dacapo-test.py
 	$(PYTHON) -m 'unittest' dacapo-test.py
 
 fullcheck: check index.py calibrate.py check-gains.py long_test_files
@@ -93,6 +93,10 @@ calibrate.py: dacapo_calibration.nw
 	$(AUTOPEP8) --in-place $@
 
 index.py: dacapo_calibration.nw
+	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
+	$(AUTOPEP8) --in-place $@
+
+dacapo-test.py: dacapo_calibration.nw
 	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
 	$(AUTOPEP8) --in-place $@
 

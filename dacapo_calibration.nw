@@ -1898,7 +1898,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                               voltages=tod.signal, pix_idx=tod.pix_idx,
                               samples_per_ofsp=local_samples_per_ofsp,
                               samples_per_gainp=local_samples_per_gainp,
-                              dipole_map=dipole_map,
+                              mc=mc,
                               mask=mask,
                               threshold=configuration.dacapo_stop,
                               max_iter=configuration.dacapo_maxiter,
@@ -2831,16 +2831,13 @@ dipole_map = get_dipole_temperature(t_cmb_k=configuration.t_cmb_k,
                                     directions=directions)
 @
 
-Finally, the monopole map should be a map where each pixel is equal to
-one, but with the masked pixel chopped to zero. Masked pixels in the
-dipole map should be set to zero as well:
+Finally, we create a [[MonopoleAndDipole]] class, which will be needed
+to run the \DaCapo algorithm:
 <<Build the monopole and dipole maps>>=
-if mask is not None:
-    monopole_map = mask
-    dipole_map *= mask
-else:
-    monopole_map = np.ones_like(dipole_map)
+mc = MonopoleAndDipole(mask=mask, dipole_map=dipole_map)
 @
+The implementation of [[MonopoleAndDipole]] map will be discussed in
+Sect.~\ref{sec:highLevelCalculations}.
 
 \begin{figure}
     \centering
@@ -3696,6 +3693,7 @@ def apply_ptildet(mpi_comm, vector, a: OfsAndGains, pix_idx,
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{More high-level calculations}
+\label{sec:highLevelCalculations}
 
 We now turn to the implementation of matrix multiplication with $\matr
 Z$ (Eq.~\ref{eq:newZmatrix}) and $\matr A$ (Eq.~\ref{eq:cjgr}).
@@ -4289,9 +4287,8 @@ periods that are ``owned'' by the MPI process.
 
 <<CG preconditioners and error estimation>>=
 class FullPreconditioner:
-    def __init__(self, monopole_map, dipole_map, pix_idx,
+    def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
-        assert len(monopole_map) == len(dipole_map)
         assert sum(samples_per_ofsp) == len(pix_idx)
 
         self.samples_per_ofsp = samples_per_ofsp
@@ -4335,8 +4332,8 @@ for ofsp_in_cur_gainp in self.ofsp_per_gainp:
     first_sample = cur_sample_idx
     for i, cur_ofsp in enumerate(samples_per_ofsp[cur_ofsp_idx:(cur_ofsp_idx +
                                                                 ofsp_in_cur_gainp)]):
-        cur_monopole = monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
-        cur_dipole = dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
+        cur_monopole = mc.monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
+        cur_dipole = mc.dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
         cur_matrix[i, i] = np.sum(cur_monopole)
         cur_matrix[ofsp_in_cur_gainp, i] = cur_matrix[i, ofsp_in_cur_gainp] = \
                 np.sum(cur_dipole)
@@ -4344,7 +4341,7 @@ for ofsp_in_cur_gainp in self.ofsp_per_gainp:
         cur_sample_idx += cur_ofsp
 
     cur_matrix[ofsp_in_cur_gainp, ofsp_in_cur_gainp] = \
-        np.sum(dipole_map[pix_idx[first_sample:cur_sample_idx]]**2)
+        np.sum(mc.dipole_map[pix_idx[first_sample:cur_sample_idx]]**2)
 
     # If the determinant is not positive, the matrix is not positive definite!
     assert np.linalg.det(cur_matrix) > 0
@@ -4407,7 +4404,7 @@ smaller.
 
 <<CG preconditioners and error estimation>>=
 class JacobiPreconditioner:
-    def __init__(self, monopole_map, dipole_map, pix_idx,
+    def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
         self.diagonal = OfsAndGains(offsets=np.zeros(len(samples_per_ofsp)),
                                     gains=np.zeros(len(samples_per_gainp)),
@@ -4439,8 +4436,8 @@ might have provided, so we go through [[monopole_map]]:
 cur_sample_idx = 0
 offsets = self.diagonal.offsets
 for row_idx, cur_sample_num in enumerate(samples_per_ofsp):
-    cur_sum = np.sum(monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
-                                                          cur_sample_num)]])
+    cur_sum = np.sum(mc.monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
+                                                             cur_sample_num)]])
     if cur_sum != 0.0:
         offsets[row_idx] = 1.0 / cur_sum
     else:
@@ -4449,15 +4446,16 @@ for row_idx, cur_sample_num in enumerate(samples_per_ofsp):
     cur_sample_idx += cur_sample_num
 @
 
-The gain part requires us to access [[dipole_map]], which we had
-previously set to zero in each pixel that was masked. So the following
-code automatically takes into account the presence of any mask:
+The gain part requires us to access [[dipole_map]], which
+[[MonopoleAndDipole]] sets to zero in each pixel that was masked. So
+the following code automatically takes into account the presence of
+masks:
 <<Compute the inverses of the squared dipole amplitudes and save them in [[self.diagonal]]>>=
 cur_sample_idx = 0
 gains = self.diagonal.gains
 for row_idx, cur_sample_num in enumerate(samples_per_gainp):
-    cur_sum = np.sum(dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
-                                                        cur_sample_num)]]**2)
+    cur_sum = np.sum(mc.dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
+                                                           cur_sample_num)]]**2)
     if cur_sum != 0.0:
         gains[row_idx] = 1.0 / cur_sum
     else:
@@ -4496,8 +4494,7 @@ except KeyError:
     sys.exit(1)
 
 if pcond_class is not None:
-    pcond = pcond_class(monopole_map=monopole_map,
-                        dipole_map=dipole_map,
+    pcond = pcond_class(mc=mc,
                         pix_idx=tod.pix_idx,
                         samples_per_ofsp=local_samples_per_ofsp,
                         samples_per_gainp=local_samples_per_gainp)
@@ -4577,15 +4574,14 @@ sky map.
 
 <<Implementation of the \DaCapo{} algorithm>>=
 def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
-            dipole_map, mask=None, pcond=None, threshold=1e-9, max_iter=10,
+            mc: MonopoleAndDipole, mask=None, pcond=None, threshold=1e-9, max_iter=10,
             cg_threshold=1e-9, max_cg_iter=100) -> DaCapoResults:
     log.debug('entering da_capo')
 
     dacapo_prof = Profiler()
 
-    sky_map = np.zeros_like(dipole_map)
-    mc = MonopoleAndDipole(mask=mask, dipole_map=dipole_map)
-    start_gains = guess_gains(voltages, pix_idx, dipole_map, samples_per_gainp)
+    sky_map = np.zeros_like(mc.dipole_map)
+    start_gains = guess_gains(voltages, pix_idx, mc.dipole_map, samples_per_gainp)
     old_a = OfsAndGains(offsets=np.zeros(len(samples_per_ofsp)),
                         gains=start_gains,
                         samples_per_ofsp=samples_per_ofsp,
@@ -4605,7 +4601,7 @@ def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
         list_of_cg_rz.append(rz)
         cg_wall_times.append(cg_prof.toc())
         sky_map_corr = compute_map_corr(mpi_comm, voltages, old_a, new_a,
-                                        pix_idx, dipole_map, sky_map)
+                                        pix_idx, mc.dipole_map, sky_map)
         sky_map += sky_map_corr
 
         stopping_factor = mpi_abs_max(mpi_comm, new_a.a_vec - old_a.a_vec)
@@ -5322,8 +5318,7 @@ def precondition_check(self, precObj):
                                                 ofs_gains_guess)
 
     if precObj:
-        pcond = precObj(monopole_map=self.mon_and_dip.monopole_map,
-                        dipole_map=self.mon_and_dip.dipole_map,
+        pcond = precObj(mc=self.mon_and_dip,
                         pix_idx=self.pix_idx,
                         samples_per_ofsp=self.ofs_and_gains.samples_per_ofsp,
                         samples_per_gainp=self.ofs_and_gains.samples_per_gainp)
@@ -5336,9 +5331,13 @@ def precondition_check(self, precObj):
     check_vector_match('conjugate_gradient',
                        np.linalg.inv(A) @ F.T @ Z @ self.tod, cg_a.a_vec)
 
-    result = da_capo(None, self.tod, self.pix_idx,
-                     self.ofs_and_gains.samples_per_ofsp,
-                     self.ofs_and_gains.samples_per_gainp, self.D, pcond=pcond)
+    result = da_capo(mpi_comm=None,
+                     voltages=self.tod,
+                     pix_idx=self.pix_idx,
+                     samples_per_ofsp=self.ofs_and_gains.samples_per_ofsp,
+                     samples_per_gainp=self.ofs_and_gains.samples_per_gainp,
+                     mc=self.mon_and_dip,
+                     pcond=pcond)
     check_vector_match('da_capo (offsets)',
                        self.ofs_and_gains.offsets, result.ofs_and_gains.offsets)
     check_vector_match('da_capo (gains)',

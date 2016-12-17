@@ -151,8 +151,7 @@ class TestDaCapo(ut.TestCase):
                                                     ofs_gains_guess)
 
         if precObj:
-            pcond = precObj(monopole_map=self.mon_and_dip.monopole_map,
-                            dipole_map=self.mon_and_dip.dipole_map,
+            pcond = precObj(mc=self.mon_and_dip,
                             pix_idx=self.pix_idx,
                             samples_per_ofsp=self.ofs_and_gains.samples_per_ofsp,
                             samples_per_gainp=self.ofs_and_gains.samples_per_gainp)
@@ -165,9 +164,13 @@ class TestDaCapo(ut.TestCase):
         check_vector_match('conjugate_gradient',
                            np.linalg.inv(A) @ F.T @ Z @ self.tod, cg_a.a_vec)
 
-        result = da_capo(None, self.tod, self.pix_idx,
-                         self.ofs_and_gains.samples_per_ofsp,
-                         self.ofs_and_gains.samples_per_gainp, self.D, pcond=pcond)
+        result = da_capo(mpi_comm=None,
+                         voltages=self.tod,
+                         pix_idx=self.pix_idx,
+                         samples_per_ofsp=self.ofs_and_gains.samples_per_ofsp,
+                         samples_per_gainp=self.ofs_and_gains.samples_per_gainp,
+                         mc=self.mon_and_dip,
+                         pcond=pcond)
         check_vector_match('da_capo (offsets)',
                            self.ofs_and_gains.offsets, result.ofs_and_gains.offsets)
         check_vector_match('da_capo (gains)',

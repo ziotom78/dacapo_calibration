@@ -585,9 +585,8 @@ def compute_rms(signal: Any, samples_per_period: List[int]) -> Any:
 
 class FullPreconditioner:
 
-    def __init__(self, monopole_map, dipole_map, pix_idx,
+    def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
-        assert len(monopole_map) == len(dipole_map)
         assert sum(samples_per_ofsp) == len(pix_idx)
 
         self.samples_per_ofsp = samples_per_ofsp
@@ -608,9 +607,9 @@ class FullPreconditioner:
             first_sample = cur_sample_idx
             for i, cur_ofsp in enumerate(samples_per_ofsp[cur_ofsp_idx:(cur_ofsp_idx +
                                                                         ofsp_in_cur_gainp)]):
-                cur_monopole = monopole_map[
+                cur_monopole = mc.monopole_map[
                     pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
-                cur_dipole = dipole_map[
+                cur_dipole = mc.dipole_map[
                     pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
                 cur_matrix[i, i] = np.sum(cur_monopole)
                 cur_matrix[ofsp_in_cur_gainp, i] = cur_matrix[i, ofsp_in_cur_gainp] = \
@@ -619,7 +618,7 @@ class FullPreconditioner:
                 cur_sample_idx += cur_ofsp
 
             cur_matrix[ofsp_in_cur_gainp, ofsp_in_cur_gainp] = \
-                np.sum(dipole_map[pix_idx[first_sample:cur_sample_idx]]**2)
+                np.sum(mc.dipole_map[pix_idx[first_sample:cur_sample_idx]]**2)
 
             # If the determinant is not positive, the matrix is not positive
             # definite!
@@ -661,7 +660,7 @@ class FullPreconditioner:
 
 class JacobiPreconditioner:
 
-    def __init__(self, monopole_map, dipole_map, pix_idx,
+    def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
         self.diagonal = OfsAndGains(offsets=np.zeros(len(samples_per_ofsp)),
                                     gains=np.zeros(len(samples_per_gainp)),
@@ -671,8 +670,8 @@ class JacobiPreconditioner:
         cur_sample_idx = 0
         offsets = self.diagonal.offsets
         for row_idx, cur_sample_num in enumerate(samples_per_ofsp):
-            cur_sum = np.sum(monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
-                                                                  cur_sample_num)]])
+            cur_sum = np.sum(mc.monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
+                                                                     cur_sample_num)]])
             if cur_sum != 0.0:
                 offsets[row_idx] = 1.0 / cur_sum
             else:
@@ -682,8 +681,8 @@ class JacobiPreconditioner:
         cur_sample_idx = 0
         gains = self.diagonal.gains
         for row_idx, cur_sample_num in enumerate(samples_per_gainp):
-            cur_sum = np.sum(dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
-                                                                cur_sample_num)]]**2)
+            cur_sum = np.sum(mc.dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx +
+                                                                   cur_sample_num)]]**2)
             if cur_sum != 0.0:
                 gains[row_idx] = 1.0 / cur_sum
             else:
@@ -732,15 +731,15 @@ DaCapoResults = namedtuple('DaCapoResults',
 
 
 def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
-            dipole_map, mask=None, pcond=None, threshold=1e-9, max_iter=10,
+            mc: MonopoleAndDipole, mask=None, pcond=None, threshold=1e-9, max_iter=10,
             cg_threshold=1e-9, max_cg_iter=100) -> DaCapoResults:
     log.debug('entering da_capo')
 
     dacapo_prof = Profiler()
 
-    sky_map = np.zeros_like(dipole_map)
-    mc = MonopoleAndDipole(mask=mask, dipole_map=dipole_map)
-    start_gains = guess_gains(voltages, pix_idx, dipole_map, samples_per_gainp)
+    sky_map = np.zeros_like(mc.dipole_map)
+    start_gains = guess_gains(
+        voltages, pix_idx, mc.dipole_map, samples_per_gainp)
     old_a = OfsAndGains(offsets=np.zeros(len(samples_per_ofsp)),
                         gains=start_gains,
                         samples_per_ofsp=samples_per_ofsp,
@@ -760,7 +759,7 @@ def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
         list_of_cg_rz.append(rz)
         cg_wall_times.append(cg_prof.toc())
         sky_map_corr = compute_map_corr(mpi_comm, voltages, old_a, new_a,
-                                        pix_idx, dipole_map, sky_map)
+                                        pix_idx, mc.dipole_map, sky_map)
         sky_map += sky_map_corr
 
         stopping_factor = mpi_abs_max(mpi_comm, new_a.a_vec - old_a.a_vec)
@@ -909,11 +908,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
     dipole_map = get_dipole_temperature(t_cmb_k=configuration.t_cmb_k,
                                         solsys_speed_vec_m_s=configuration.solsys_speed_vec_m_s,
                                         directions=directions)
-    if mask is not None:
-        monopole_map = mask
-        dipole_map *= mask
-    else:
-        monopole_map = np.ones_like(dipole_map)
+    mc = MonopoleAndDipole(mask=mask, dipole_map=dipole_map)
     try:
         pcond_class = PCOND_DICT[configuration.pcond]
     except KeyError:
@@ -923,8 +918,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
         sys.exit(1)
 
     if pcond_class is not None:
-        pcond = pcond_class(monopole_map=monopole_map,
-                            dipole_map=dipole_map,
+        pcond = pcond_class(mc=mc,
                             pix_idx=tod.pix_idx,
                             samples_per_ofsp=local_samples_per_ofsp,
                             samples_per_gainp=local_samples_per_gainp)
@@ -935,7 +929,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                               voltages=tod.signal, pix_idx=tod.pix_idx,
                               samples_per_ofsp=local_samples_per_ofsp,
                               samples_per_gainp=local_samples_per_gainp,
-                              dipole_map=dipole_map,
+                              mc=mc,
                               mask=mask,
                               threshold=configuration.dacapo_stop,
                               max_iter=configuration.dacapo_maxiter,
