@@ -119,7 +119,7 @@ spacecraft is such that the full dynamic range of the dipole signal is
 explored regularly during the survey.
 
 The algorithm used for the calibration is \DaCapo, which was developed
-by prof.~E.~Keih\"anen and is presented in
+by Dr.~E.~Keih\"anen and is presented in
 \citet{planck2015.lfi.calibration}. The algorithm uses many concepts
 developed in the context of destriping
 \citep{burigana.1997.destriping,keihanen2004}, and it is able to
@@ -204,7 +204,7 @@ component of the noise.
 \end{enumerate}
 
 The program uses the \DaCapo{} algorithm developed by
-prof.~E.~Keih\"anen and described in
+Dr.~E.~Keih\"anen and described in
 \citet{planck2015.lfi.calibration}. The algorithm is briefly presented
 in Sect.~\ref{sec:DaCapoMathematicalModel}
 
