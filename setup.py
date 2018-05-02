@@ -3,7 +3,7 @@
 from numpy.distutils.core import setup, Extension
 
 wrapper = Extension('fortran_routines',
-                    sources=['fortran_routines.f95'],
+                    sources=['ftnroutines.f90'],
                     extra_f90_compile_args=["-std=f2003"])
 setup(name='calibrate',
       version='0.1',
