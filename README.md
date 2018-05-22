@@ -40,6 +40,16 @@ In the directory `examples` you will find a couple of parameter files
 for `index.py` and `calibrate.py`. Refer to the PDF documentation for
 a full reference of each parameter.
 
+## Testing
+
+To run a number of unit tests, run the following command:
+
+    make check
+
+To run a number of integration test, use the following command instead:
+
+    make fullcheck
+
 ## License
 
 The code is released under a permissive MIT license. See the file

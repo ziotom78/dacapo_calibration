@@ -12,6 +12,7 @@ DOCKER ?= sudo docker
 MPIRUN ?= mpirun -n 2
 INKSCAPE ?= inkscape
 MV ?= mv
+MKDIR ?= mkdir
 
 DEPS = \
 	figures/TOD_indexing.pdf \
@@ -48,13 +49,13 @@ fullcheck: check index.py calibrate.py check-gains.py long_test_files
 	$(PYTHON) ./index.py test_files/long_test_index.ini && \
 	$(MPIRUN) $(PYTHON) ./calibrate.py test_files/long_test_calibrate_none.ini && \
 	$(PYTHON) ./check-gains.py test_files/long_test_tod.fits test_files/long_test_results_none.fits && \
-	$(MPIRUN) $$(PYTHON) ./calibrate.py test_files/long_test_calibrate_jacobi.ini && \
+	$(MPIRUN) $(PYTHON) ./calibrate.py test_files/long_test_calibrate_jacobi.ini && \
 	$(PYTHON) ./check-gains.py test_files/long_test_tod.fits test_files/long_test_results_jacobi.fits && \
-	$(MPIRUN) $$(PYTHON) ./calibrate.py test_files/long_test_calibrate_full.ini && \
+	$(MPIRUN) $(PYTHON) ./calibrate.py test_files/long_test_calibrate_full.ini && \
 	$(PYTHON) ./check-gains.py test_files/long_test_tod.fits test_files/long_test_results_full.fits
 
-long_test_files: create-test-files.py test_files/long_test_tod.fits test_files/long_test_hits.fits.gz
-	$(PYTHON) ./create-test-files.py test_files
+long_test_files test_files/long_test_tod.fits test_files/long_test_hits.fits.gz: create-test-files.py
+	$(MKDIR) -p test_files && $(PYTHON) ./create-test-files.py test_files
 
 help:
 	@echo "Usage: make COMMAND"
@@ -97,6 +98,14 @@ index.py: dacapo_calibration.nw
 	$(AUTOPEP8) --in-place $@
 
 dacapo-test.py: dacapo_calibration.nw
+	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
+	$(AUTOPEP8) --in-place $@
+
+create-test-files.py: dacapo_calibration.nw
+	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
+	$(AUTOPEP8) --in-place $@
+
+check-gains.py: dacapo_calibration.nw
 	$(NOTANGLE) -R$@ $^ | $(CPIF) $@
 	$(AUTOPEP8) --in-place $@
 

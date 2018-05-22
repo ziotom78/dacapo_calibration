@@ -5637,7 +5637,8 @@ theta, phi = generate_pointings(rpm1=1.,
                                 num_of_samples=num_of_samples)
 pixidx = healpy.ang2pix(nside, theta, phi)
 healpy.write_map(os.path.join(outdir, 'long_test_hits.fits.gz'),
-                 np.bincount(pixidx, minlength=healpy.nside2npix(nside)))
+                 np.bincount(pixidx, minlength=healpy.nside2npix(nside)),
+                 overwrite=True)
 @
 We save the hit count map in a FITS file, because it is useful for
 debugging purposes. An image of the map is shown in

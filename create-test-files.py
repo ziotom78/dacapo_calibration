@@ -119,7 +119,8 @@ def main(outdir: str):
                                     num_of_samples=num_of_samples)
     pixidx = healpy.ang2pix(nside, theta, phi)
     healpy.write_map(os.path.join(outdir, 'long_test_hits.fits.gz'),
-                     np.bincount(pixidx, minlength=healpy.nside2npix(nside)))
+                     np.bincount(pixidx, minlength=healpy.nside2npix(nside)),
+                     overwrite=True)
     tod = (galaxy_map[pixidx] + dipole_map[pixidx] + np.random.randn() *
            dipole_amplitude * 1e-5)
     offsets = np.random.randn(num_of_samples //
@@ -194,6 +195,7 @@ def main(outdir: str):
                nside=nside))
 
     log.info('file "%s" written', ini_file_name)
+
 
 if __name__ == '__main__':
     main()
