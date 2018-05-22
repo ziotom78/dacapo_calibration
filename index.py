@@ -136,7 +136,7 @@ class IndexFile:
             self.period_length, 'Length of a period')
         return [file_info_hdu, period_hdu]
 
-    def load_from_fits(self, file_name: str):
+    def load_from_fits(self, file_name: str, first_idx=-1, last_idx=-1):
         with fits.open(file_name) as f:
             fileinfo_hdu = f['FILEINFO']
             fileinfo_hdr = fileinfo_hdu.header
@@ -155,6 +155,17 @@ class IndexFile:
                                          num_of_samples=x[2],
                                          num_of_unflagged_samples=x[3])
                              for x in fileinfo_hdu.data.tolist()]
+            if first_index < 0:
+                _first = 0
+            else:
+                _first = first_index
+
+            if last_index < 0:
+                _last = len(self.tod_info) - 1
+            else:
+                _last = min(len(self.tod_info) - 1, last_index)
+
+            self.tod_info = self.tod_info[first_index:(last_index + 1)]
             self.input_hdu = fileinfo_hdu.header['INPHDU']
             self.input_column = fileinfo_hdu.header['INPCOL']
 

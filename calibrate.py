@@ -51,6 +51,7 @@ def gather_arrays(mpi_comm, array: Any, root=0) -> Any:
 
 CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                     ['index_file',
+                                     'first_tod_index', 'last_tod_index',
                                      'signal_hdu', 'signal_column',
                                      'pointing_hdu', 'pointing_columns',
                                      't_cmb_k', 'solsys_speed_vec_m_s',
@@ -283,6 +284,8 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
         input_sect = conf_file['input_files']
 
         index_file = input_sect.get('index_file', None)
+        first_tod_index = input_sect.get('first_tod_index', -1)
+        last_tod_index = input_sect.get('last_tod_index', -1)
         signal_hdu = int_or_str(input_sect.get('signal_hdu'))
         signal_column = int_or_str(input_sect.get('signal_column'))
         pointing_hdu = int_or_str(input_sect.get('pointing_hdu'))
@@ -347,6 +350,8 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
     param_file_contents = np.array(
         list(param_file_contents.getvalue().encode('utf-8')))
     return CalibrateConfiguration(index_file=index_file,
+                                  first_tod_index=first_tod_index,
+                                  last_tod_index=last_tod_index,
                                   signal_hdu=signal_hdu,
                                   signal_column=signal_column,
                                   pointing_hdu=pointing_hdu,
@@ -868,7 +873,10 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                   'parameter file or using the --index-file switch')
         sys.exit(1)
     index = IndexFile()
-    index.load_from_fits(configuration.index_file)
+    index.load_from_fits(configuration.index_file,
+                         first_index=configuration.first_tod_index,
+                         last_index=configuration.last_tod_index)
+    log.info('%d files are going to be loaded', len(self.tod_info))
     samples_per_ofsp = index.periods
 
     gainp_lengths = split(length=len(samples_per_ofsp),

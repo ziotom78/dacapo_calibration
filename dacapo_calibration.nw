@@ -1624,7 +1624,7 @@ class IndexFile:
         <<Set the header of the two HDUs>>
         return [file_info_hdu, period_hdu]
 
-    def load_from_fits(self, file_name: str):
+    def load_from_fits(self, file_name: str, first_idx=-1, last_idx=-1):
         with fits.open(file_name) as f:
             fileinfo_hdu = f['FILEINFO']
             <<Load the [[FILEINFO]] HDU from [[fileinfo_hdu]]>>
@@ -1708,7 +1708,10 @@ period_hdu.header['LENGTH'] = (self.period_length, 'Length of a period')
 @
 
 We can now turn to the implementation of [[IndexFile.load_from_fits]].
-Here is the code that reads back the [[FILEINFO]] HDU:
+Starting from version 1.1, this function allows to specify the first and
+last index (both inclusive) of the [[TODFileInfo]] array, in order to
+load the definition of a subset of the whole TOD: this is useful for
+debugging. Here is the code that reads back the [[FILEINFO]] HDU:
 <<Load the [[FILEINFO]] HDU from [[fileinfo_hdu]]>>=
 fileinfo_hdr = fileinfo_hdu.header
 if 'FTYPE' in fileinfo_hdr:
@@ -1726,9 +1729,22 @@ self.tod_info = [TODFileInfo(file_name=x[0].decode(),
                              num_of_samples=x[2],
                              num_of_unflagged_samples=x[3])
                  for x in fileinfo_hdu.data.tolist()]
+if first_index < 0:
+    _first = 0
+else:
+    _first = first_index
+
+if last_index < 0:
+    _last = len(self.tod_info) - 1
+else:
+    _last = min(len(self.tod_info) - 1, last_index)
+
+self.tod_info = self.tod_info[first_index:(last_index + 1)]
 self.input_hdu = fileinfo_hdu.header['INPHDU']
 self.input_column = fileinfo_hdu.header['INPCOL']
 @
+Note that if [[first_index]] and [[last_index]] are not provided, the code
+reads all the TODs (as it was the case in version 1.0).
 
 And here is the code which reads the [[PERIODS]] HDU:
 <<Load the [[PERIODS]] HDU from [[periods_hdu]]>>=
@@ -1983,6 +1999,10 @@ time elapsed since the last call to [[toc]], and so on.
 
         [[input_files]]& [[index_file]]& \texttt{str}& Path to the
     file created by [[index.py]]\\
+        & [[first_tod_index]& \texttt{int}& 0-based index of the first
+    TOD file to read, or -1 to read from the first element (default)\\
+        & [[last_tod_index]& \texttt{int}& 0-based index of the last
+    TOD file to read (inclusive), or -1 to read till the last element (default)\\
         & [[signal_hdu]]& \texttt{str}/\texttt{int} &
     Name/number of the tabular HDU containing the column with the TOD\\
         & [[signal_column]]& \texttt{str}/\texttt{int} &
@@ -2048,6 +2068,7 @@ data structure that holds all the settings loaded from an INI file:
 <<Datatypes used by [[calibrate.py]]>>=
 CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                     ['index_file',
+                                     'first_tod_index', 'last_tod_index',
                                      'signal_hdu', 'signal_column',
                                      'pointing_hdu', 'pointing_columns',
                                      't_cmb_k', 'solsys_speed_vec_m_s',
@@ -2105,16 +2126,21 @@ beginning of [[calibrate.py]]):
 input_sect = conf_file['input_files']
 
 index_file = input_sect.get('index_file', None)
+first_tod_index = input_sect.get('first_tod_index', -1)
+last_tod_index = input_sect.get('last_tod_index', -1)
 signal_hdu = int_or_str(input_sect.get('signal_hdu'))
 signal_column = int_or_str(input_sect.get('signal_column'))
 pointing_hdu = int_or_str(input_sect.get('pointing_hdu'))
 pointing_columns = [int_or_str(x.strip())
                     for x in input_sect.get('pointing_columns').split(',')]
 @
-We do not force the user to provide an [[index_file]] line in the
-configuration file, as this information can be provided from the
-command line using the [[--index-file]] switch. We'll check later if
-an index file has been actually provided in one way or in the other.
+We do not force the user to provide an [[index_file]] line in the configuration
+file, as this information can be provided from the command line using the
+[[--index-file]] switch. We'll check later if an index file has been actually
+provided in one way or in the other.  In order to preserve compatibility with
+version 1.0 of this code, we do not need the user to specify
+[[first_tod_index]] and [[last_tod_index]]: in this case, the code will analyze
+all the TOD files. 
 
 We allow the user to provide TOD files containing pointing information
 either as colatitude/longitude pairs or pixel numbers, and the number
@@ -2207,6 +2233,8 @@ just a matter of putting together all the local variables initialized
 before:
 <<Build and return a [[CalibrateConfiguration]] object>>=
 return CalibrateConfiguration(index_file=index_file,
+                              first_tod_index=first_tod_index,
+                              last_tod_index=last_tod_index,
                               signal_hdu=signal_hdu,
                               signal_column=signal_column,
                               pointing_hdu=pointing_hdu,
@@ -2247,10 +2275,14 @@ if configuration.index_file is None:
 @
 
 To load the index file, we use the [[IndexFile]] class we implemented
-for [[index.py]]:
+for [[index.py]], passing the first and last index of the TOD files
+to be loaded by the code:
 <<Load the index file>>=
 index = IndexFile()
-index.load_from_fits(configuration.index_file)
+index.load_from_fits(configuration.index_file,
+                     first_index=configuration.first_tod_index,
+                     last_index=configuration.last_tod_index)
+log.info('%d files are going to be loaded', len(self.tod_info))
 @
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
