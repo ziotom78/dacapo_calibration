@@ -23,6 +23,8 @@ class FlagType(Enum):
 class FlagAction(Enum):
     include = 0
     exclude = 1
+
+
 Flagging = namedtuple('Flagging', 'flag_type flag_value flag_action')
 
 
@@ -41,6 +43,8 @@ def flag_mask(flags: Any,
         mask = np.logical_not(mask)
 
     return mask
+
+
 IndexConfiguration = namedtuple('IndexConfiguration',
                                 ['flagging',
                                  'flag_hdu',
@@ -59,7 +63,6 @@ TODFileInfo = namedtuple('TODFileInfo',
 
 
 class IndexFile:
-
     def __init__(self,
                  input_hdu: Union[int, str]=1,
                  input_column: Union[int, str]=0,
@@ -140,9 +143,8 @@ class IndexFile:
             if 'FTYPE' in fileinfo_hdr:
                 self.flagging = \
                     Flagging(flag_type=FlagType[fileinfo_hdr['FTYPE']],
-                             flag_action=FlagAction[
-                        fileinfo_hdr['FACTION']],
-                        flag_value=fileinfo_hdr['FVALUE'])
+                             flag_action=FlagAction[fileinfo_hdr['FACTION']],
+                             flag_value=fileinfo_hdr['FVALUE'])
                 self.flag_hdu = int_or_str(fileinfo_hdr['FHDU'])
                 self.flag_column = int_or_str(fileinfo_hdr['FCOL'])
             else:
@@ -339,5 +341,7 @@ def index_main(configuration_file):
                  info_list=list_of_file_info,
                  periods=periods,
                  configuration=configuration)
+
+
 if __name__ == '__main__':
     index_main()

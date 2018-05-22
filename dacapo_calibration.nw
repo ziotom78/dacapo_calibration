@@ -1382,7 +1382,7 @@ As above, we use [[int_or_str]] to initialize the variable containing
 the HDU and the column specified by the user.
 
 
-\section{Implementing the main loop for [[index.py]]}
+\section{Implementing the main loop for \texttt{index.py}}
 \label{sec:indexMainLoop}
 
 Now that we have implemented [[IndexConfiguration]], it's time to
@@ -1833,7 +1833,7 @@ where to put these low-level routines. Here is the skeleton:
 @
 
 
-\section{Implementation of the [[calibrate_main]] function}
+\section{Implementation of the main loop for \texttt{calibrate.py}}
 
 To implement the main function, we make use of the excellent [[click]]
 library. We specify that the executable takes only one required

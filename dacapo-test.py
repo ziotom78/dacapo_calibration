@@ -53,11 +53,10 @@ def build_test_matrices(num_of_samples, num_of_pixels, pix_idx,
 
 
 class TestDaCapo(ut.TestCase):
-
     def setUp(self):
         self.num_of_pixels = 3
         self.sky_map = np.array([-0.4, 0.2, 0.2])
-        self.D = np.sin(2 * np.pi * np.array([0, 1 / 3, 2 / 3]))
+        self.D = np.sin(2 * np.pi * np.array([0, 1/3, 2/3]))
         self.mc = np.array([self.D, [1, 1, 1]]).T
         self.mon_and_dip = MonopoleAndDipole(mask=[1, 1, 1], dipole_map=self.D)
         self.signal_sum_map = self.D + self.sky_map
@@ -189,7 +188,6 @@ class TestDaCapo(ut.TestCase):
 
 
 class TestMiscellanea(ut.TestCase):
-
     def testComputeRMS(self):
         chunks = [40000, 70000, 50000]
         samples = np.random.randn(np.sum(chunks))

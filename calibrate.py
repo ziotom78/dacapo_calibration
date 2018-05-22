@@ -22,7 +22,6 @@ import ftnroutines
 
 
 class Profiler:
-
     def __init__(self):
         self.start_time = None
         self.tic()
@@ -48,6 +47,8 @@ def gather_arrays(mpi_comm, array: Any, root=0) -> Any:
 
     mpi_comm.Gatherv(sendbuf=array, recvbuf=(recvbuf, lengths), root=root)
     return recvbuf
+
+
 CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                     ['index_file',
                                      'signal_hdu', 'signal_column',
@@ -64,7 +65,6 @@ CalibrateConfiguration = namedtuple('CalibrateConfiguration',
 
 
 class OfsAndGains:
-
     def __init__(self, offsets, gains, samples_per_ofsp, samples_per_gainp):
         self.a_vec = np.concatenate((offsets, gains))
         self.samples_per_ofsp = np.array(samples_per_ofsp, dtype='int')
@@ -120,7 +120,6 @@ def ofs_and_gains_with_same_lengths(source: OfsAndGains, a_vec):
 
 
 class MonopoleAndDipole:
-
     def __init__(self, mask, dipole_map):
         if mask is not None:
             self.monopole_map = np.array(mask, dtype='float')
@@ -156,11 +155,12 @@ def split(length, sublength: int):
 
 
 class TOD:
-
     def __init__(self, signal, pix_idx, num_of_pixels):
         self.signal = signal
         self.pix_idx = pix_idx
         self.num_of_pixels = num_of_pixels
+
+
 TODSubrange = namedtuple('TODSubrange',
                          ['file_info',
                           'first_idx',
@@ -366,6 +366,8 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
                                   save_convergence=save_convergence,
                                   comment=comment,
                                   parameter_file_contents=param_file_contents)
+
+
 SPEED_OF_LIGHT_M_S = 2.99792458e8
 
 
@@ -584,7 +586,6 @@ def compute_rms(signal: Any, samples_per_period: List[int]) -> Any:
 
 
 class FullPreconditioner:
-
     def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
         assert sum(samples_per_ofsp) == len(pix_idx)
@@ -607,10 +608,10 @@ class FullPreconditioner:
             first_sample = cur_sample_idx
             for i, cur_ofsp in enumerate(samples_per_ofsp[cur_ofsp_idx:(cur_ofsp_idx +
                                                                         ofsp_in_cur_gainp)]):
-                cur_monopole = mc.monopole_map[
-                    pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
-                cur_dipole = mc.dipole_map[
-                    pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
+                cur_monopole = mc.monopole_map[pix_idx[cur_sample_idx:(
+                    cur_sample_idx + cur_ofsp)]]
+                cur_dipole = mc.dipole_map[pix_idx[cur_sample_idx:(
+                    cur_sample_idx + cur_ofsp)]]
                 cur_matrix[i, i] = np.sum(cur_monopole)
                 cur_matrix[ofsp_in_cur_gainp, i] = cur_matrix[i, ofsp_in_cur_gainp] = \
                     np.sum(cur_dipole)
@@ -620,8 +621,7 @@ class FullPreconditioner:
             cur_matrix[ofsp_in_cur_gainp, ofsp_in_cur_gainp] = \
                 np.sum(mc.dipole_map[pix_idx[first_sample:cur_sample_idx]]**2)
 
-            # If the determinant is not positive, the matrix is not positive
-            # definite!
+            # If the determinant is not positive, the matrix is not positive definite!
             assert np.linalg.det(cur_matrix) > 0
 
             self.matrices.append(np.linalg.inv(cur_matrix))
@@ -637,8 +637,8 @@ class FullPreconditioner:
         for cur_gainp_idx, num_of_ofsp in enumerate(self.ofsp_per_gainp):
             # y = M^-1 x   for each block in F^T F
             x = np.empty(num_of_ofsp + 1)
-            x[0:num_of_ofsp] = offsets[
-                cur_ofsp_idx:(cur_ofsp_idx + num_of_ofsp)]
+            x[0:num_of_ofsp] = offsets[cur_ofsp_idx:(
+                cur_ofsp_idx + num_of_ofsp)]
             x[num_of_ofsp] = gains[cur_gainp_idx]
             y = self.matrices[cur_gainp_idx] @ x
 
@@ -659,7 +659,6 @@ class FullPreconditioner:
 
 
 class JacobiPreconditioner:
-
     def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
         self.diagonal = OfsAndGains(offsets=np.zeros(len(samples_per_ofsp)),
@@ -700,6 +699,8 @@ class JacobiPreconditioner:
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
         return np.sqrt(rms * self.diagonal.gains)
+
+
 PCOND_DICT = {'none': None,
               'full': FullPreconditioner,
               'jacobi': JacobiPreconditioner}
@@ -720,6 +721,8 @@ def guess_gains(voltages, pix_idx, dipole_map, samples_per_gainp):
         cal_start += gainp_len
 
     return result
+
+
 DaCapoResults = namedtuple('DaCapoResults',
                            ['ofs_and_gains',
                             'sky_map',
@@ -813,6 +816,7 @@ def compute_map_corr(mpi_comm, voltages, old_a: OfsAndGains, new_a: OfsAndGains,
     result = np.ma.array(map_corr, mask=(np.abs(normalization) < 1e-9),
                          fill_value=0.0)
     return (result / normalization).filled()
+
 
 DEFAULT_LOGFILE_MASK = 'calibrate_%04d.log'
 
@@ -1034,6 +1038,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                                        clobber=True)
         log.info('gains and offsets written into file "%s"',
                  configuration.output_file_name)
+
 
 if __name__ == '__main__':
     calibrate_main()
