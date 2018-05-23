@@ -2018,6 +2018,9 @@ time elapsed since the last call to [[toc]], and so on.
     longitude of the direction of the Solar system velocity [rad]\\
         & [[solsysspeed_m_s]]& \texttt{float}& Speed of the solar
     system with respect to the CMB rest frame [m/s]\\
+        & [[frequency_hz]& \texttt{float}& Frequency (in Hertz)
+    to use for the calculation of relativistic corrections to the
+    dipole. Default is "NaN" (no correction is applied)\\
         & [[nside]]& \texttt{int}& Resolution (NSIDE) of the sky map
     built by \DaCapo\\
         & [[mask]]& \texttt{str}& Path to a Healpix map containing the
@@ -2072,6 +2075,7 @@ CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                      'signal_hdu', 'signal_column',
                                      'pointing_hdu', 'pointing_columns',
                                      't_cmb_k', 'solsys_speed_vec_m_s',
+                                     'frequency_hz',
                                      'nside', 'mask_file_path',
                                      'periods_per_cal_constant',
                                      'cg_stop', 'cg_maxiter',
@@ -2165,6 +2169,12 @@ solsys_speed_vec_m_s = solsysspeed_m_s * \
               np.sin(solsysdir_ecl_colat_rad) * np.sin(solsysdir_ecl_long_rad),
               np.cos(solsysdir_ecl_colat_rad)])
 
+freq_str = dacapo_sect.get('frequency_hz', fallback=None)
+if freq_str.lower in ['', 'none', 'nan', 'no']:
+    frequency_hz = None
+else:
+    frequency_hz = float(freq_str)
+
 nside = dacapo_sect.getint('nside')
 mask_file_path = dacapo_sect.get('mask', fallback=None)
 periods_per_cal_constant = dacapo_sect.getint('periods_per_cal_constant')
@@ -2241,6 +2251,7 @@ return CalibrateConfiguration(index_file=index_file,
                               pointing_columns=pointing_columns,
                               t_cmb_k=t_cmb_k,
                               solsys_speed_vec_m_s=solsys_speed_vec_m_s,
+                              frequency_hz=frequency_hz,
                               nside=nside,
                               mask_file_path=mask_file_path,
                               periods_per_cal_constant=periods_per_cal_constant,
@@ -2797,11 +2808,28 @@ frame at time $t$ along direction $\vect{x}$ is
 \begin{equation}
 \label{eq:dipole}
 D(\vect{x}, t) = T_\mathrm{CMB} \left(\frac1{\gamma(t) \bigl(1 -
-\vect{\beta}(t) \cdot \vect{x}\bigr)} -
-1\right),
+\vect{\beta}(t) \cdot \vect{x}\bigr)} - 1\right),
 \end{equation}
 where $\vect\beta(t) = \vect v(t)/c$ is the speed of the rest frame,
-and $\gamma(t) = \bigl(1 - \vect\beta^2(t)\bigr)^{-1/2}$.
+and $\gamma(t) = \bigl(1 - \vect\beta^2(t)\bigr)^{-1/2}$. However,
+this formula does not consider frequency-dependent relativistic
+corrections due to the fact that detectors usually measure brightness
+around some frequency $\nu$ instead of the temperature $D$ itself
+\citep{quartin.notari.2015}. A more precise formula for the dipole
+signal would thus be the following:
+\begin{equation}
+\label{eq:dipoleCorr}
+D(\vect{x}, t, \nu) = T_\mathrm{CMB} \left( \beta \cdot \vect{x} +
+\bigl(\beta \cdot \vect{x}( \beta \cdot \vect{x} +
+Q(\nu) \cdot \bigl(\bigr)^2\bigr)^2\right),
+\end{equation}
+where $Q(\nu)$ is defined as
+\begin{equation}
+\label{eq:quadrupolarCorr}
+Q(\nu) =
+\frac{h \nu}{2 k_B T_\mathrm{CMB}} \coth \left(\frac{h \nu}{2 k_B T_\mathrm{CMB}}\right) = 
+\frac{h \nu}{2 k_B T_\mathrm{CMB}} \frac{\exp(h \nu / k_B T_\mathrm{CMB} + 1}{\exp(h \nu / k_B T_\mathrm{CMB} - 1}.
+\end{equation}
 
 In our case, we ignore the velocity of the spacecraft and take into
 account the velocity of the Solar System with respect to the CMB rest
@@ -2815,23 +2843,35 @@ value of $T_\mathrm{CMB}$ ([[t_cmb_k]]), the velocity of the Solar
 System $\vect{v}(t)$ ([[solsys_speed_vec_m_s]], a 3-element NumPy
 array), and an array of directions $\left\{\vect{x}_i\right\}$
 ([[directions]]), and it returns an array of temperature (one for each
-direction $\vect{x}_i$):
+direction $\vect{x}_i$). Since version 1.1, the caller can optionally specify
+a frequency: in this case, Eq.~\eqref{eq:dipoleCorr} will be used instead of
+Eq.~\eqref{eq:dipole}.
 <<Estimation of the dipole signal>>=
 SPEED_OF_LIGHT_M_S = 2.99792458e8
+PLANCK_H_MKS = 6.62606896e-34
+BOLTZMANN_K_MKS = 1.3806504e-23
 
-def get_dipole_temperature(t_cmb_k: float, solsys_speed_vec_m_s, directions):
+def get_dipole_temperature(t_cmb_k: float, solsys_speed_vec_m_s, directions, freq=None):
     '''Given one or more one-length versors, return the intensity of the CMB dipole
 
     The vectors must be expressed in the Ecliptic coordinate system.
-    No kinetic dipole nor relativistic corrections are computed.
+    If "freq" (frequency in Hz) is specified, the formulation will use the
+    quadrupolar correction.
     '''
     log.debug('entering get_dipole_temperature')
 
     beta = solsys_speed_vec_m_s / SPEED_OF_LIGHT_M_S
-    gamma = (1 - np.dot(beta, beta))**(-0.5)
+    if freq:
+            fact = PLANCK_H_MKS * freq / (BOLTZMANN_K_MKS * t_cmb_k)
+            expfact = np.exp(fact)
+            q = (fact / 2) * (expfact + 1) / (expfact - 1)
+            dotprod = np.dot(beta, directions)
+            return t_cmb_k * (dotprod + q * dotprod**2)
+    else:
+	    gamma = (1 - np.dot(beta, beta))**(-0.5)
 
-    return t_cmb_k * (1.0 / (gamma * (1 - np.dot(beta, directions))) - 1.0)
-@ %def SPEED_OF_LIGHT_M_S get_dipole_temperature
+	    return t_cmb_k * (1.0 / (gamma * (1 - np.dot(beta, directions))) - 1.0)
+@ %def SPEED_OF_LIGHT_M_S PLANCK_H_MKS BOLTZMANN_K_MKS get_dipole_temperature 
 
 We can now implement the part of the main function [[calibrate_main]]
 where we build the monopole and dipole maps $\matr{m}_c$
@@ -2860,7 +2900,8 @@ directions = healpy.pix2vec(configuration.nside,
                             np.arange(healpy.nside2npix(configuration.nside)))
 dipole_map = get_dipole_temperature(t_cmb_k=configuration.t_cmb_k,
                                     solsys_speed_vec_m_s=configuration.solsys_speed_vec_m_s,
-                                    directions=directions)
+                                    directions=directions,
+                                    freq=configuration.frequency_hz)
 @
 
 Finally, we create a [[MonopoleAndDipole]] class, which will be needed
@@ -5454,8 +5495,8 @@ while the dipole is generated on-the-fly using
 def create_dipole_map(nside: int):
     '''Create a Healpix map containing the CMB dipole signal in K_CMB'''
     t_cmb_k = 2.7
-    solsys_colat_rad = 1.7656131194951572
-    solsysdir_long_rad = 2.995889600573578
+    solsys_colat_rad = 1.76560508
+    solsysdir_long_rad = 2.97323038
     solsysspeed_m_s = 370082.2332
     solsys_speed_vec_m_s = solsysspeed_m_s * \
         np.array([np.sin(solsys_colat_rad) * np.cos(solsysdir_long_rad),

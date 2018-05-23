@@ -1,4 +1,4 @@
-\begin{thebibliography}{6}
+\begin{thebibliography}{7}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -43,6 +43,13 @@ H.~{Kurki-Suonio}, E.~{Keih{\"a}nen}, R.~{Keskitalo}, T.~{Poutanen}, {A.-S.}
 \newblock \emph{Astronomy {\&} Astrophysics}, dec 2015.
 \newblock \doi{10.1051/0004-6361/201526632}.
 \newblock URL \url{http://dx.doi.org/10.1051/0004-6361/201526632}.
+
+\bibitem[{Quartin} and {Notari}(2015)]{quartin.notari.2015}
+M.~{Quartin} and A.~{Notari}.
+\newblock {Improving Planck calibration by including frequency-dependent
+  relativistic corrections}.
+\newblock \emph{JCAP}, 9:\penalty0 050, September 2015.
+\newblock \doi{10.1088/1475-7516/2015/09/050}.
 
 \bibitem[Strikwerda(2004)]{Strikwerda_2004}
 John~C. Strikwerda.

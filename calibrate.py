@@ -55,6 +55,7 @@ CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                      'signal_hdu', 'signal_column',
                                      'pointing_hdu', 'pointing_columns',
                                      't_cmb_k', 'solsys_speed_vec_m_s',
+                                     'frequency_hz',
                                      'nside', 'mask_file_path',
                                      'periods_per_cal_constant',
                                      'cg_stop', 'cg_maxiter',
@@ -304,6 +305,12 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
                       np.sin(solsysdir_ecl_long_rad),
                       np.cos(solsysdir_ecl_colat_rad)])
 
+        freq_str = dacapo_sect.get('frequency_hz', fallback=None)
+        if freq_str.lower in ['', 'none', 'nan', 'no']:
+            frequency_hz = None
+        else:
+            frequency_hz = float(freq_str)
+
         nside = dacapo_sect.getint('nside')
         mask_file_path = dacapo_sect.get('mask', fallback=None)
         periods_per_cal_constant = dacapo_sect.getint(
@@ -358,6 +365,7 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
                                   pointing_columns=pointing_columns,
                                   t_cmb_k=t_cmb_k,
                                   solsys_speed_vec_m_s=solsys_speed_vec_m_s,
+                                  frequency_hz=frequency_hz,
                                   nside=nside,
                                   mask_file_path=mask_file_path,
                                   periods_per_cal_constant=periods_per_cal_constant,
@@ -374,20 +382,30 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
 
 
 SPEED_OF_LIGHT_M_S = 2.99792458e8
+PLANCK_H_MKS = 6.62606896e-34
+BOLTZMANN_K_MKS = 1.3806504e-23
 
 
-def get_dipole_temperature(t_cmb_k: float, solsys_speed_vec_m_s, directions):
+def get_dipole_temperature(t_cmb_k: float, solsys_speed_vec_m_s, directions, freq=None):
     '''Given one or more one-length versors, return the intensity of the CMB dipole
 
     The vectors must be expressed in the Ecliptic coordinate system.
-    No kinetic dipole nor relativistic corrections are computed.
+    If "freq" (frequency in Hz) is specified, the formulation will use the
+    quadrupolar correction.
     '''
     log.debug('entering get_dipole_temperature')
 
     beta = solsys_speed_vec_m_s / SPEED_OF_LIGHT_M_S
-    gamma = (1 - np.dot(beta, beta))**(-0.5)
+    if freq:
+        fact = PLANCK_H_MKS * freq / (BOLTZMANN_K_MKS * t_cmb_k)
+        expfact = np.exp(fact)
+        q = (fact / 2) * (expfact + 1) / (expfact - 1)
+        dotprod = np.dot(beta, directions)
+        return t_cmb_k * (dotprod + q * dotprod**2)
+    else:
+        gamma = (1 - np.dot(beta, beta))**(-0.5)
 
-    return t_cmb_k * (1.0 / (gamma * (1 - np.dot(beta, directions))) - 1.0)
+        return t_cmb_k * (1.0 / (gamma * (1 - np.dot(beta, directions))) - 1.0)
 
 
 def apply_f(a: OfsAndGains, pix_idx, dipole_map, sky_map):
@@ -919,7 +937,8 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                                 np.arange(healpy.nside2npix(configuration.nside)))
     dipole_map = get_dipole_temperature(t_cmb_k=configuration.t_cmb_k,
                                         solsys_speed_vec_m_s=configuration.solsys_speed_vec_m_s,
-                                        directions=directions)
+                                        directions=directions,
+                                        freq=configuration.frequency_hz)
     mc = MonopoleAndDipole(mask=mask, dipole_map=dipole_map)
     try:
         pcond_class = PCOND_DICT[configuration.pcond]
