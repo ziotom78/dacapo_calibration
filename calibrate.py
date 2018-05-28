@@ -305,8 +305,8 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
                       np.sin(solsysdir_ecl_long_rad),
                       np.cos(solsysdir_ecl_colat_rad)])
 
-        freq_str = dacapo_sect.get('frequency_hz', fallback=None)
-        if freq_str.lower in ['', 'none', 'nan', 'no']:
+        freq_str = dacapo_sect.get('frequency_hz', fallback='none')
+        if freq_str.lower() in ['', 'none', 'nan', 'no']:
             frequency_hz = None
         else:
             frequency_hz = float(freq_str)
@@ -892,9 +892,9 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
         sys.exit(1)
     index = IndexFile()
     index.load_from_fits(configuration.index_file,
-                         first_index=configuration.first_tod_index,
-                         last_index=configuration.last_tod_index)
-    log.info('%d files are going to be loaded', len(self.tod_info))
+                         first_idx=configuration.first_tod_index,
+                         last_idx=configuration.last_tod_index)
+    log.info('%d files are going to be loaded', len(index.tod_info))
     samples_per_ofsp = index.periods
 
     gainp_lengths = split(length=len(samples_per_ofsp),

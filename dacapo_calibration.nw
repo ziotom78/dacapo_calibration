@@ -1729,17 +1729,17 @@ self.tod_info = [TODFileInfo(file_name=x[0].decode(),
                              num_of_samples=x[2],
                              num_of_unflagged_samples=x[3])
                  for x in fileinfo_hdu.data.tolist()]
-if first_index < 0:
+if first_idx < 0:
     _first = 0
 else:
-    _first = first_index
+    _first = first_idx
 
-if last_index < 0:
+if last_idx < 0:
     _last = len(self.tod_info) - 1
 else:
-    _last = min(len(self.tod_info) - 1, last_index)
+    _last = min(len(self.tod_info) - 1, last_idx)
 
-self.tod_info = self.tod_info[first_index:(last_index + 1)]
+self.tod_info = self.tod_info[_first:(_last + 1)]
 self.input_hdu = fileinfo_hdu.header['INPHDU']
 self.input_column = fileinfo_hdu.header['INPCOL']
 @
@@ -2169,8 +2169,8 @@ solsys_speed_vec_m_s = solsysspeed_m_s * \
               np.sin(solsysdir_ecl_colat_rad) * np.sin(solsysdir_ecl_long_rad),
               np.cos(solsysdir_ecl_colat_rad)])
 
-freq_str = dacapo_sect.get('frequency_hz', fallback=None)
-if freq_str.lower in ['', 'none', 'nan', 'no']:
+freq_str = dacapo_sect.get('frequency_hz', fallback='none')
+if freq_str.lower() in ['', 'none', 'nan', 'no']:
     frequency_hz = None
 else:
     frequency_hz = float(freq_str)
@@ -2291,9 +2291,9 @@ to be loaded by the code:
 <<Load the index file>>=
 index = IndexFile()
 index.load_from_fits(configuration.index_file,
-                     first_index=configuration.first_tod_index,
-                     last_index=configuration.last_tod_index)
-log.info('%d files are going to be loaded', len(self.tod_info))
+                     first_idx=configuration.first_tod_index,
+                     last_idx=configuration.last_tod_index)
+log.info('%d files are going to be loaded', len(index.tod_info))
 @
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2820,15 +2820,14 @@ signal would thus be the following:
 \begin{equation}
 \label{eq:dipoleCorr}
 D(\vect{x}, t, \nu) = T_\mathrm{CMB} \left( \beta \cdot \vect{x} +
-\bigl(\beta \cdot \vect{x}( \beta \cdot \vect{x} +
-Q(\nu) \cdot \bigl(\bigr)^2\bigr)^2\right),
+Q(\nu) \cdot \bigl(\beta \cdot \vect{x}\bigr)^2\right),
 \end{equation}
 where $Q(\nu)$ is defined as
 \begin{equation}
 \label{eq:quadrupolarCorr}
 Q(\nu) =
 \frac{h \nu}{2 k_B T_\mathrm{CMB}} \coth \left(\frac{h \nu}{2 k_B T_\mathrm{CMB}}\right) = 
-\frac{h \nu}{2 k_B T_\mathrm{CMB}} \frac{\exp(h \nu / k_B T_\mathrm{CMB} + 1}{\exp(h \nu / k_B T_\mathrm{CMB} - 1}.
+\frac{h \nu}{2 k_B T_\mathrm{CMB}} \frac{\exp(h \nu / k_B T_\mathrm{CMB}) + 1}{\exp(h \nu / k_B T_\mathrm{CMB}) - 1}.
 \end{equation}
 
 In our case, we ignore the velocity of the spacecraft and take into
@@ -5016,7 +5015,8 @@ import numpy as np
 from calibrate import OfsAndGains, MonopoleAndDipole, \
     apply_f, apply_ft, compute_diagm, apply_ptilde, apply_ptildet, \
     apply_z, apply_A, compute_v, conjugate_gradient, compute_map_corr, \
-    da_capo, JacobiPreconditioner, FullPreconditioner, compute_rms
+    da_capo, JacobiPreconditioner, FullPreconditioner, compute_rms, \
+    get_dipole_temperature
 
 <<Helper test functions>>
 
@@ -5033,6 +5033,7 @@ class TestDaCapo(ut.TestCase):
     <<Test [[apply_A]]>>
     <<Test [[compute_v]]>>
     <<Test [[compute_map_corr]]>>
+    <<Test [[get_dipole_temperature]]>>
     <<Test the preconditioners>>
 
 class TestMiscellanea(ut.TestCase):
@@ -5452,6 +5453,31 @@ def testComputeRMS(self):
                        np.repeat(1.0, len(chunks)),
                        compute_rms(samples, chunks),
                        rtol=5e-2)
+@
+
+Another function to test is [[get_dipole_temperature]]. We test it
+both with and without the relativistic frequency-dependent correction:
+<<Test [[get_dipole_temperature]]>>=
+def testDipoleTemperature(self):
+    # Speed of the Solar System according to Planck 2015, in m/s
+    solsysspeed = np.array([-357948.22884313,   60840.92963476,  -71640.11501626])
+    tcmb = 2.72548
+
+    # No quadrupolar correction
+    assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1]),
+                       -0.0006532168171509646)
+
+    assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 30e9),
+                       -0.0006511369998784711)
+
+    assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 44e9),
+                       -0.0006511328936482864)
+
+    assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 70e9),
+                       -0.0006511213786323892)
+
+    assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 143e9),
+                       -0.0006510659240198485)
 @
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

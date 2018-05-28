@@ -19,8 +19,8 @@ import quaternionarray as qa
 def create_dipole_map(nside: int):
     '''Create a Healpix map containing the CMB dipole signal in K_CMB'''
     t_cmb_k = 2.7
-    solsys_colat_rad = 1.7656131194951572
-    solsysdir_long_rad = 2.995889600573578
+    solsys_colat_rad = 1.76560508
+    solsysdir_long_rad = 2.97323038
     solsysspeed_m_s = 370082.2332
     solsys_speed_vec_m_s = solsysspeed_m_s * \
         np.array([np.sin(solsys_colat_rad) * np.cos(solsysdir_long_rad),

@@ -155,17 +155,17 @@ class IndexFile:
                                          num_of_samples=x[2],
                                          num_of_unflagged_samples=x[3])
                              for x in fileinfo_hdu.data.tolist()]
-            if first_index < 0:
+            if first_idx < 0:
                 _first = 0
             else:
-                _first = first_index
+                _first = first_idx
 
-            if last_index < 0:
+            if last_idx < 0:
                 _last = len(self.tod_info) - 1
             else:
-                _last = min(len(self.tod_info) - 1, last_index)
+                _last = min(len(self.tod_info) - 1, last_idx)
 
-            self.tod_info = self.tod_info[first_index:(last_index + 1)]
+            self.tod_info = self.tod_info[_first:(_last + 1)]
             self.input_hdu = fileinfo_hdu.header['INPHDU']
             self.input_column = fileinfo_hdu.header['INPCOL']
 

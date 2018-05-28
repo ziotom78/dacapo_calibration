@@ -6,7 +6,8 @@ import numpy as np
 from calibrate import OfsAndGains, MonopoleAndDipole, \
     apply_f, apply_ft, compute_diagm, apply_ptilde, apply_ptildet, \
     apply_z, apply_A, compute_v, conjugate_gradient, compute_map_corr, \
-    da_capo, JacobiPreconditioner, FullPreconditioner, compute_rms
+    da_capo, JacobiPreconditioner, FullPreconditioner, compute_rms, \
+    get_dipole_temperature
 
 
 def check_vector_match(name, vector1, vector2, rtol=1e-05):
@@ -137,6 +138,28 @@ class TestDaCapo(ut.TestCase):
                            compute_map_corr(None, fake_tod, self.ofs_and_gains,
                                             self.ofs_and_gains,
                                             self.pix_idx, self.D, self.sky_map))
+
+    def testDipoleTemperature(self):
+        # Speed of the Solar System according to Planck 2015, in m/s
+        solsysspeed = np.array(
+            [-357948.22884313,   60840.92963476,  -71640.11501626])
+        tcmb = 2.72548
+
+        # No quadrupolar correction
+        assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1]),
+                           -0.0006532168171509646)
+
+        assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 30e9),
+                           -0.0006511369998784711)
+
+        assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 44e9),
+                           -0.0006511328936482864)
+
+        assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 70e9),
+                           -0.0006511213786323892)
+
+        assert np.allclose(get_dipole_temperature(tcmb, solsysspeed, [0, 0, 1], 143e9),
+                           -0.0006510659240198485)
 
     def precondition_check(self, precObj):
         ofs_gains_guess = OfsAndGains(offsets=np.zeros(2),
