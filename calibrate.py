@@ -10,8 +10,7 @@ from datetime import datetime
 
 import click
 from typing import List, Any
-import numpy as np
-import scipy
+import numpy as np, scipy
 import healpy
 import logging as log
 from numba import jit
@@ -19,7 +18,6 @@ from index import int_or_str, flag_mask, TODFileInfo, IndexFile
 from astropy.io import fits
 from mpi4py import MPI
 import ftnroutines
-
 
 class Profiler:
     def __init__(self):
@@ -36,9 +34,7 @@ class Profiler:
         diff = now - self.start_time
         self.start_time = now
         return diff.total_seconds()
-
-
-def gather_arrays(mpi_comm, array: Any, root=0) -> Any:
+def gather_arrays(mpi_comm, array : Any, root=0) -> Any:
     lengths = mpi_comm.gather(len(array), root=root)
     if mpi_comm.Get_rank() == root:
         recvbuf = np.empty(sum(lengths), dtype=array.dtype)
@@ -47,8 +43,6 @@ def gather_arrays(mpi_comm, array: Any, root=0) -> Any:
 
     mpi_comm.Gatherv(sendbuf=array, recvbuf=(recvbuf, lengths), root=root)
     return recvbuf
-
-
 CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                     ['index_file',
                                      'first_tod_index', 'last_tod_index',
@@ -64,8 +58,6 @@ CalibrateConfiguration = namedtuple('CalibrateConfiguration',
                                      'save_convergence',
                                      'comment',
                                      'parameter_file_contents'])
-
-
 class OfsAndGains:
     def __init__(self, offsets, gains, samples_per_ofsp, samples_per_gainp):
         self.a_vec = np.concatenate((offsets, gains))
@@ -113,14 +105,10 @@ class OfsAndGains:
             ofsp_per_gainp.append(ofsp_in_cur_gainp)
 
         return ofsp_per_gainp
-
-
 def ofs_and_gains_with_same_lengths(source: OfsAndGains, a_vec):
     result = copy(source)
     result.a_vec = np.copy(a_vec)
     return result
-
-
 class MonopoleAndDipole:
     def __init__(self, mask, dipole_map):
         if mask is not None:
@@ -129,46 +117,34 @@ class MonopoleAndDipole:
             self.monopole_map = np.ones_like(dipole_map)
 
         self.dipole_map = np.array(dipole_map) * np.array(self.monopole_map)
-
-
 def split_into_n(length: int, num_of_segments: int):
     log.debug('entering split_into_n')
     assert (num_of_segments > 0), \
         "num_of_segments={0} is not positive".format(num_of_segments)
     assert (length >= num_of_segments), \
-        "length={0} is smaller than num_of_segments={1}".format(
-            length, num_of_segments)
+        "length={0} is smaller than num_of_segments={1}".format(length, num_of_segments)
 
     start_positions = np.array([int(i * length / num_of_segments)
                                 for i in range(num_of_segments + 1)],
                                dtype='int')
     return start_positions[1:] - start_positions[0:-1]
-
-
 def split(length, sublength: int):
     log.debug('entering split')
     assert (sublength > 0), "sublength={0} is not positive".format(sublength)
     assert (sublength < length), \
-        "sublength={0} is not smaller than length={1}".format(
-            sublength, length)
+        "sublength={0} is not smaller than length={1}".format(sublength, length)
 
     return split_into_n(length=length,
                         num_of_segments=int(np.ceil(length / sublength)))
-
-
 class TOD:
     def __init__(self, signal, pix_idx, num_of_pixels):
         self.signal = signal
         self.pix_idx = pix_idx
         self.num_of_pixels = num_of_pixels
-
-
 TODSubrange = namedtuple('TODSubrange',
                          ['file_info',
                           'first_idx',
                           'num_of_samples'])
-
-
 def assign_files_to_processes(samples_per_process: Any,
                               tod_info: List[TODFileInfo]) -> List[List[TODSubrange]]:
     log.debug('entering assign_files_to_processes')
@@ -206,16 +182,13 @@ def assign_files_to_processes(samples_per_process: Any,
         result.append(MPI_proc_subranges)
 
     return result
-
-
 def load_subrange(subrange: TODSubrange,
                   index: IndexFile,
                   configuration: CalibrateConfiguration) -> TOD:
     log.debug('entering load_subrange')
 
     with fits.open(subrange.file_info.file_name) as f:
-        signal = f[configuration.signal_hdu].data.field(
-            configuration.signal_column)
+        signal = f[configuration.signal_hdu].data.field(configuration.signal_column)
         if len(signal) != subrange.file_info.num_of_samples:
             log.error('expected %d samples in file "%s", but %d found: '
                       'you should rebuild the index file',
@@ -258,8 +231,6 @@ def load_subrange(subrange: TODSubrange,
 
     return TOD(signal=signal, pix_idx=pix_idx,
                num_of_pixels=healpy.nside2npix(configuration.nside))
-
-
 def load_tod(tod_list: List[TODSubrange],
              index: IndexFile,
              configuration: CalibrateConfiguration) -> TOD:
@@ -274,8 +245,6 @@ def load_tod(tod_list: List[TODSubrange],
         result.pix_idx = np.concatenate((result.pix_idx, cur_tod.pix_idx))
 
     return result
-
-
 def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
     log.debug('entering read_calibrate_conf_file')
     conf_file = ConfigParser()
@@ -295,14 +264,12 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
         dacapo_sect = conf_file['dacapo']
 
         t_cmb_k = dacapo_sect.getfloat('t_cmb_k')
-        solsysdir_ecl_colat_rad = dacapo_sect.getfloat(
-            'solsysdir_ecl_colat_rad')
+        solsysdir_ecl_colat_rad = dacapo_sect.getfloat('solsysdir_ecl_colat_rad')
         solsysdir_ecl_long_rad = dacapo_sect.getfloat('solsysdir_ecl_long_rad')
         solsysspeed_m_s = dacapo_sect.getfloat('solsysspeed_m_s')
         solsys_speed_vec_m_s = solsysspeed_m_s * \
             np.array([np.sin(solsysdir_ecl_colat_rad) * np.cos(solsysdir_ecl_long_rad),
-                      np.sin(solsysdir_ecl_colat_rad) *
-                      np.sin(solsysdir_ecl_long_rad),
+                      np.sin(solsysdir_ecl_colat_rad) * np.sin(solsysdir_ecl_long_rad),
                       np.cos(solsysdir_ecl_colat_rad)])
 
         freq_str = dacapo_sect.get('frequency_hz', fallback='none')
@@ -313,8 +280,7 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
 
         nside = dacapo_sect.getint('nside')
         mask_file_path = dacapo_sect.get('mask', fallback=None)
-        periods_per_cal_constant = dacapo_sect.getint(
-            'periods_per_cal_constant')
+        periods_per_cal_constant = dacapo_sect.getint('periods_per_cal_constant')
         cg_stop = dacapo_sect.getfloat('cg_stop_value', 1e-9)
         cg_maxiter = dacapo_sect.getint('cg_max_iterations', 100)
         dacapo_stop = dacapo_sect.getfloat('dacapo_stop_value', 1e-9)
@@ -333,11 +299,9 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
                 raise ValueError('periods_per_cal_constant ({0}) should be greater than zero'
                                  .format(periods_per_cal_constant))
             if cg_maxiter < 0:
-                raise ValueError(
-                    'cg_maxiter (%d) cannot be negative'.format(cg_maxiter))
+                raise ValueError('cg_maxiter (%d) cannot be negative'.format(cg_maxiter))
             if dacapo_maxiter < 0:
-                raise ValueError(
-                    'dacapo_maxiter (%d) cannot be negative'.format(dacapo_maxiter))
+                raise ValueError('dacapo_maxiter (%d) cannot be negative'.format(dacapo_maxiter))
         except ValueError as e:
             log.error(e)
             sys.exit(1)
@@ -345,8 +309,7 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
 
         output_file_name = output_sect.get('file_name')
         save_map = output_sect.getboolean('save_map', fallback=True)
-        save_convergence = output_sect.getboolean(
-            'save_convergence_information', fallback=True)
+        save_convergence = output_sect.getboolean('save_convergence_information', fallback=True)
         comment = output_sect.get('comment', fallback=None)
     except ValueError as e:
         log.error('invalid value found in one of the entries in "%s": %s',
@@ -354,8 +317,7 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
 
     param_file_contents = io.StringIO()
     conf_file.write(param_file_contents)
-    param_file_contents = np.array(
-        list(param_file_contents.getvalue().encode('utf-8')))
+    param_file_contents = np.array(list(param_file_contents.getvalue().encode('utf-8')))
     return CalibrateConfiguration(index_file=index_file,
                                   first_tod_index=first_tod_index,
                                   last_tod_index=last_tod_index,
@@ -379,12 +341,9 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
                                   save_convergence=save_convergence,
                                   comment=comment,
                                   parameter_file_contents=param_file_contents)
-
-
 SPEED_OF_LIGHT_M_S = 2.99792458e8
 PLANCK_H_MKS = 6.62606896e-34
 BOLTZMANN_K_MKS = 1.3806504e-23
-
 
 def get_dipole_temperature(t_cmb_k: float, solsys_speed_vec_m_s, directions, freq=None):
     '''Given one or more one-length versors, return the intensity of the CMB dipole
@@ -397,31 +356,25 @@ def get_dipole_temperature(t_cmb_k: float, solsys_speed_vec_m_s, directions, fre
 
     beta = solsys_speed_vec_m_s / SPEED_OF_LIGHT_M_S
     if freq:
-        fact = PLANCK_H_MKS * freq / (BOLTZMANN_K_MKS * t_cmb_k)
-        expfact = np.exp(fact)
-        q = (fact / 2) * (expfact + 1) / (expfact - 1)
-        dotprod = np.dot(beta, directions)
-        return t_cmb_k * (dotprod + q * dotprod**2)
+            fact = PLANCK_H_MKS * freq / (BOLTZMANN_K_MKS * t_cmb_k)
+            expfact = np.exp(fact)
+            q = (fact / 2) * (expfact + 1) / (expfact - 1)
+            dotprod = np.dot(beta, directions)
+            return t_cmb_k * (dotprod + q * dotprod**2)
     else:
-        gamma = (1 - np.dot(beta, beta))**(-0.5)
+            gamma = (1 - np.dot(beta, beta))**(-0.5)
 
-        return t_cmb_k * (1.0 / (gamma * (1 - np.dot(beta, directions))) - 1.0)
-
-
+            return t_cmb_k * (1.0 / (gamma * (1 - np.dot(beta, directions))) - 1.0)
 def apply_f(a: OfsAndGains, pix_idx, dipole_map, sky_map):
     log.debug('entering apply_f')
     return ftnroutines.apply_f(a.offsets, a.gains,
                                a.samples_per_ofsp, a.samples_per_gainp,
                                pix_idx, dipole_map, sky_map)
-
-
 def apply_ft(vector, a: OfsAndGains, pix_idx, dipole_map, sky_map):
     log.debug('entering apply_ft')
     return ftnroutines.apply_ft(vector, a.offsets, a.gains,
                                 a.samples_per_ofsp, a.samples_per_gainp,
                                 pix_idx, dipole_map, sky_map)
-
-
 def sum_local_results(mpi_comm, function, **arguments):
     log.debug('entering sum_local_results')
     result = function(**arguments)
@@ -432,29 +385,20 @@ def sum_local_results(mpi_comm, function, **arguments):
         return totals
     else:
         return result
-
-
 def compute_diagm_locally(a: OfsAndGains, pix_idx, num_of_pixels: int):
     log.debug('entering compute_diagm_locally')
     result = np.empty(num_of_pixels, dtype='float')
-    ftnroutines.compute_diagm_locally(
-        a.gains, a.samples_per_gainp, pix_idx, result)
+    ftnroutines.compute_diagm_locally(a.gains, a.samples_per_gainp, pix_idx, result)
     return result
-
-
 def compute_diagm(mpi_comm, a: OfsAndGains, pix_idx, num_of_pixels: int):
     log.debug('entering compute_diagm')
     return sum_local_results(mpi_comm, function=compute_diagm_locally,
                              a=a,
                              pix_idx=pix_idx,
                              num_of_pixels=num_of_pixels)
-
-
 def apply_ptilde(map_pixels, a: OfsAndGains, pix_idx):
     log.debug('entering apply_ptilde')
     return ftnroutines.apply_ptilde(map_pixels, a.gains, a.samples_per_gainp, pix_idx)
-
-
 def apply_ptildet_locally(vector, a: OfsAndGains, pix_idx, num_of_pixels: int):
     log.debug('entering apply_ptildet_locally')
     result = np.empty(num_of_pixels, dtype='float')
@@ -462,8 +406,6 @@ def apply_ptildet_locally(vector, a: OfsAndGains, pix_idx, num_of_pixels: int):
                                       a.samples_per_gainp,
                                       pix_idx, result)
     return result
-
-
 def apply_ptildet(mpi_comm, vector, a: OfsAndGains, pix_idx,
                   num_of_pixels: int):
     log.debug('entering apply_ptildet')
@@ -472,8 +414,6 @@ def apply_ptildet(mpi_comm, vector, a: OfsAndGains, pix_idx,
                              a=a,
                              pix_idx=pix_idx,
                              num_of_pixels=num_of_pixels)
-
-
 def apply_z(mpi_comm, vector, a: OfsAndGains, pix_idx, mc: MonopoleAndDipole):
     log.debug('entering apply_z')
     binned_map = apply_ptildet(mpi_comm, vector, a, pix_idx,
@@ -502,8 +442,6 @@ def apply_z(mpi_comm, vector, a: OfsAndGains, pix_idx, mc: MonopoleAndDipole):
                                  small_matr_prod, binned_map)
 
     return vector - apply_ptilde(binned_map, a, pix_idx)
-
-
 def apply_A(mpi_comm, a: OfsAndGains, sky_map, pix_idx,
             mc: MonopoleAndDipole, x: OfsAndGains):
     log.debug('entering apply_A')
@@ -511,15 +449,11 @@ def apply_A(mpi_comm, a: OfsAndGains, sky_map, pix_idx,
     vector1 = apply_f(x, pix_idx, mc.dipole_map, sky_map)
     vector2 = apply_z(mpi_comm, vector1, a, pix_idx, mc)
     return apply_ft(vector2, a, pix_idx, mc.dipole_map, sky_map)
-
-
 def compute_v(mpi_comm, voltages, a: OfsAndGains, sky_map, pix_idx,
               mc: MonopoleAndDipole):
     log.debug('entering compute_v')
     vector = apply_z(mpi_comm, voltages, a, pix_idx, mc)
     return apply_ft(vector, a, pix_idx, mc.dipole_map, sky_map)
-
-
 def mpi_dot_prod(mpi_comm, x, y):
     log.debug('entering mpi_dot_prod')
 
@@ -529,8 +463,6 @@ def mpi_dot_prod(mpi_comm, x, y):
         return mpi_comm.allreduce(local_sum, op=MPI.SUM)
     else:
         return local_sum
-
-
 def conjugate_gradient(mpi_comm, voltages, start_a: OfsAndGains, sky_map,
                        pix_idx, mc: MonopoleAndDipole, pcond=None,
                        threshold=1e-9, max_iter=100):
@@ -539,7 +471,7 @@ def conjugate_gradient(mpi_comm, voltages, start_a: OfsAndGains, sky_map,
 
     a = copy(start_a)
     residual = (compute_v(mpi_comm, voltages, a, sky_map, pix_idx, mc) -
-                apply_A(mpi_comm, a, sky_map, pix_idx, mc, a))
+             apply_A(mpi_comm, a, sky_map, pix_idx, mc, a))
     r = ofs_and_gains_with_same_lengths(source=start_a,
                                         a_vec=residual)
 
@@ -590,8 +522,6 @@ def conjugate_gradient(mpi_comm, voltages, start_a: OfsAndGains, sky_map,
         p.a_vec = z.a_vec + (new_r_dot / old_r_dot) * p.a_vec
 
         old_r_dot = new_r_dot
-
-
 @jit
 def compute_rms(signal: Any, samples_per_period: List[int]) -> Any:
     result = np.empty(len(samples_per_period))
@@ -606,8 +536,6 @@ def compute_rms(signal: Any, samples_per_period: List[int]) -> Any:
         start_idx += cur_samples
 
     return result
-
-
 class FullPreconditioner:
     def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
@@ -616,8 +544,7 @@ class FullPreconditioner:
         self.samples_per_ofsp = samples_per_ofsp
         self.samples_per_gainp = samples_per_gainp
         self.ofsp_per_gainp = \
-            OfsAndGains.calc_ofsp_per_gainp(
-                samples_per_ofsp, samples_per_gainp)
+            OfsAndGains.calc_ofsp_per_gainp(samples_per_ofsp, samples_per_gainp)
 
         assert sum(self.ofsp_per_gainp) == len(self.samples_per_ofsp)
 
@@ -631,13 +558,11 @@ class FullPreconditioner:
             first_sample = cur_sample_idx
             for i, cur_ofsp in enumerate(samples_per_ofsp[cur_ofsp_idx:(cur_ofsp_idx +
                                                                         ofsp_in_cur_gainp)]):
-                cur_monopole = mc.monopole_map[pix_idx[cur_sample_idx:(
-                    cur_sample_idx + cur_ofsp)]]
-                cur_dipole = mc.dipole_map[pix_idx[cur_sample_idx:(
-                    cur_sample_idx + cur_ofsp)]]
+                cur_monopole = mc.monopole_map[pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
+                cur_dipole = mc.dipole_map[pix_idx[cur_sample_idx:(cur_sample_idx + cur_ofsp)]]
                 cur_matrix[i, i] = np.sum(cur_monopole)
                 cur_matrix[ofsp_in_cur_gainp, i] = cur_matrix[i, ofsp_in_cur_gainp] = \
-                    np.sum(cur_dipole)
+                        np.sum(cur_dipole)
 
                 cur_sample_idx += cur_ofsp
 
@@ -660,13 +585,11 @@ class FullPreconditioner:
         for cur_gainp_idx, num_of_ofsp in enumerate(self.ofsp_per_gainp):
             # y = M^-1 x   for each block in F^T F
             x = np.empty(num_of_ofsp + 1)
-            x[0:num_of_ofsp] = offsets[cur_ofsp_idx:(
-                cur_ofsp_idx + num_of_ofsp)]
+            x[0:num_of_ofsp] = offsets[cur_ofsp_idx:(cur_ofsp_idx + num_of_ofsp)]
             x[num_of_ofsp] = gains[cur_gainp_idx]
             y = self.matrices[cur_gainp_idx] @ x
 
-            result.offsets[cur_ofsp_idx:(
-                cur_ofsp_idx + num_of_ofsp)] = y[0:num_of_ofsp]
+            result.offsets[cur_ofsp_idx:(cur_ofsp_idx + num_of_ofsp)] = y[0:num_of_ofsp]
             result.gains[cur_gainp_idx] = y[num_of_ofsp]
             cur_ofsp_idx += num_of_ofsp
             cur_gainp_idx += 1
@@ -679,8 +602,6 @@ class FullPreconditioner:
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
         return np.sqrt(rms * np.array([np.diag(x)[-1] for x in self.matrices]))
-
-
 class JacobiPreconditioner:
     def __init__(self, mc: MonopoleAndDipole, pix_idx,
                  samples_per_ofsp, samples_per_gainp):
@@ -722,13 +643,9 @@ class JacobiPreconditioner:
     def compute_gain_errors(self, voltages, samples_per_gainp):
         rms = compute_rms(voltages, samples_per_gainp)
         return np.sqrt(rms * self.diagonal.gains)
-
-
 PCOND_DICT = {'none': None,
               'full': FullPreconditioner,
               'jacobi': JacobiPreconditioner}
-
-
 def guess_gains(voltages, pix_idx, dipole_map, samples_per_gainp):
     log.debug('entering guess_gains')
 
@@ -744,8 +661,6 @@ def guess_gains(voltages, pix_idx, dipole_map, samples_per_gainp):
         cal_start += gainp_len
 
     return result
-
-
 DaCapoResults = namedtuple('DaCapoResults',
                            ['ofs_and_gains',
                             'sky_map',
@@ -754,8 +669,6 @@ DaCapoResults = namedtuple('DaCapoResults',
                             'cg_wall_times',
                             'converged',
                             'dacapo_wall_time'])
-
-
 def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
             mc: MonopoleAndDipole, mask=None, pcond=None, threshold=1e-9, max_iter=10,
             cg_threshold=1e-9, max_cg_iter=100) -> DaCapoResults:
@@ -764,8 +677,7 @@ def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
     dacapo_prof = Profiler()
 
     sky_map = np.zeros_like(mc.dipole_map)
-    start_gains = guess_gains(
-        voltages, pix_idx, mc.dipole_map, samples_per_gainp)
+    start_gains = guess_gains(voltages, pix_idx, mc.dipole_map, samples_per_gainp)
     old_a = OfsAndGains(offsets=np.zeros(len(samples_per_ofsp)),
                         gains=start_gains,
                         samples_per_ofsp=samples_per_ofsp,
@@ -815,8 +727,6 @@ def da_capo(mpi_comm, voltages, pix_idx, samples_per_ofsp, samples_per_gainp,
                                  converged=False,
                                  cg_wall_times=cg_wall_times,
                                  dacapo_wall_time=dacapo_prof.toc())
-
-
 def mpi_abs_max(mpi_comm, vec):
     log.debug('entering mpi_abs_max')
 
@@ -826,23 +736,18 @@ def mpi_abs_max(mpi_comm, vec):
         return mpi_comm.allreduce(local_max, op=MPI.MAX)
     else:
         return local_max
-
-
 def compute_map_corr(mpi_comm, voltages, old_a: OfsAndGains, new_a: OfsAndGains,
                      pix_idx, dipole_map, sky_map):
     log.debug('entering compute_map_corr')
 
     diff_tod = voltages - apply_f(new_a, pix_idx, dipole_map, sky_map)
-    map_corr = apply_ptildet(mpi_comm, diff_tod, old_a,
-                             pix_idx, len(dipole_map))
+    map_corr = apply_ptildet(mpi_comm, diff_tod, old_a, pix_idx, len(dipole_map))
     normalization = compute_diagm(mpi_comm, old_a, pix_idx, len(dipole_map))
     result = np.ma.array(map_corr, mask=(np.abs(normalization) < 1e-9),
                          fill_value=0.0)
     return (result / normalization).filled()
 
-
 DEFAULT_LOGFILE_MASK = 'calibrate_%04d.log'
-
 
 @click.command()
 @click.argument('configuration_file')
@@ -869,8 +774,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
     else:
         log_level = log.INFO
 
-    log_format = '[%(asctime)s %(levelname)s MPI#{0:04d}] %(message)s'.format(
-        mpi_rank)
+    log_format = '[%(asctime)s %(levelname)s MPI#{0:04d}] %(message)s'.format(mpi_rank)
     if full_log_flag:
         log.basicConfig(level=log_level, filename=(logfile_mask % mpi_rank),
                         filemode='w', format=log_format)
@@ -914,13 +818,11 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
     gainp_idx_end = gainp_idx_start + gainp_per_process[mpi_rank]
 
     ofsp_idx_start = sum(gainp_lengths[0:gainp_idx_start])
-    ofsp_idx_end = ofsp_idx_start + \
-        sum(gainp_lengths[gainp_idx_start:gainp_idx_end])
+    ofsp_idx_end = ofsp_idx_start + sum(gainp_lengths[gainp_idx_start:gainp_idx_end])
 
     local_samples_per_ofsp = samples_per_ofsp[ofsp_idx_start:ofsp_idx_end]
     local_samples_per_gainp = samples_per_gainp[gainp_idx_start:gainp_idx_end]
-    files_per_process = assign_files_to_processes(
-        samples_per_process, index.tod_info)
+    files_per_process = assign_files_to_processes(samples_per_process, index.tod_info)
     tod = load_tod(files_per_process[mpi_rank], index, configuration)
     assert len(tod.signal) == sum(local_samples_per_ofsp)
     assert len(tod.signal) == sum(local_samples_per_gainp)
@@ -929,8 +831,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
              overall_num_of_samples, mpi_size)
     if configuration.mask_file_path is not None:
         mask = healpy.read_map(configuration.mask_file_path, verbose=False)
-        mask = np.array(healpy.ud_grade(
-            mask, configuration.nside), dtype='int')
+        mask = np.array(healpy.ud_grade(mask, configuration.nside), dtype='int')
     else:
         mask = None
     directions = healpy.pix2vec(configuration.nside,
@@ -969,8 +870,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                               pcond=pcond)
 
     coll_gains = gather_arrays(mpi_comm, da_capo_results.ofs_and_gains.gains)
-    coll_offsets = gather_arrays(
-        mpi_comm, da_capo_results.ofs_and_gains.offsets)
+    coll_offsets = gather_arrays(mpi_comm, da_capo_results.ofs_and_gains.offsets)
     if pcond is not None:
         coll_gain_errors = gather_arrays(mpi_comm,
                                          pcond.compute_gain_errors(tod.signal,
@@ -981,13 +881,11 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                                                                        local_samples_per_ofsp))
 
     else:
-        log.warning(
-            'no preconditioner used, all offset/gain errors will be set to zero')
+        log.warning('no preconditioner used, all offset/gain errors will be set to zero')
         coll_offset_errors = np.zeros_like(coll_offsets)
         coll_gain_errors = np.zeros_like(coll_gains)
     if mpi_rank == 0:
-        primary_hdu = fits.PrimaryHDU(
-            data=configuration.parameter_file_contents)
+        primary_hdu = fits.PrimaryHDU(data=configuration.parameter_file_contents)
         primary_hdu.header.add_comment(configuration.comment)
         primary_hdu.header['WTIME'] = (da_capo_results.dacapo_wall_time,
                                        'Wall clock time [s]')
@@ -997,54 +895,40 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                                          'Has the DaCapo algorithm converged?')
         primary_hdu.header['GPPEROP'] = (configuration.periods_per_cal_constant,
                                          'Number of ofs periods per each gain period')
-        primary_hdu.header['CGSTOP'] = (
-            configuration.cg_stop, 'Stopping factor for CG')
-        primary_hdu.header['CGMAXIT'] = (
-            configuration.cg_maxiter, 'Maximum number of CG iterations')
-        primary_hdu.header['DCSTOP'] = (
-            configuration.dacapo_stop, 'Stopping factor for DaCapo')
-        primary_hdu.header['DCMAXIT'] = (
-            configuration.dacapo_maxiter, 'Maximum number of DaCapo iterations')
-        primary_hdu.header['PCOND'] = (
-            configuration.pcond, 'Kind of preconditioner')
-        primary_hdu.header['NSIDE'] = (
-            configuration.nside, 'Resolution of the map used by DaCapo')
+        primary_hdu.header['CGSTOP'] = (configuration.cg_stop, 'Stopping factor for CG')
+        primary_hdu.header['CGMAXIT'] = (configuration.cg_maxiter, 'Maximum number of CG iterations')
+        primary_hdu.header['DCSTOP'] = (configuration.dacapo_stop, 'Stopping factor for DaCapo')
+        primary_hdu.header['DCMAXIT'] = (configuration.dacapo_maxiter, 'Maximum number of DaCapo iterations')
+        primary_hdu.header['PCOND'] = (configuration.pcond, 'Kind of preconditioner')
+        primary_hdu.header['NSIDE'] = (configuration.nside, 'Resolution of the map used by DaCapo')
 
         if mask is None:
             fsky = 100.0
         else:
             fsky = len(mask[mask > 0]) * 100.0 / len(mask)
-        primary_hdu.header['FSKY'] = (
-            fsky, 'Fraction of the sky used by DaCapo')
+        primary_hdu.header['FSKY'] = (fsky, 'Fraction of the sky used by DaCapo')
         hdu_list = [primary_hdu] + index.store_in_hdus()
         cols = [fits.Column(name='OFFSET', array=np.array(coll_offsets).flatten(), format='1D'),
-                fits.Column(name='ERR', array=np.array(
-                    coll_offset_errors).flatten(), format='1D'),
+                fits.Column(name='ERR', array=np.array(coll_offset_errors).flatten(), format='1D'),
                 fits.Column(name='NSAMPLES', array=samples_per_ofsp, format='1J')]
         hdu_list.append(fits.BinTableHDU.from_columns(cols, name='OFFSETS'))
 
         cols = [fits.Column(name='GAIN', array=np.array(coll_gains).flatten(), format='1D'),
-                fits.Column(name='ERR', array=np.array(
-                    coll_gain_errors).flatten(), format='1D'),
+                fits.Column(name='ERR', array=np.array(coll_gain_errors).flatten(), format='1D'),
                 fits.Column(name='NSAMPLES', array=samples_per_gainp, format='1J')]
         hdu_list.append(fits.BinTableHDU.from_columns(cols, name='GAINS'))
         if configuration.save_map:
-            col = fits.Column(name='SIGNAL', format='D',
-                              array=da_capo_results.sky_map)
+            col = fits.Column(name='SIGNAL', format='D', array=da_capo_results.sky_map)
             hdu = fits.BinTableHDU.from_columns([col], name='SKYMAP')
 
             hdu.header['PIXTYPE'] = ('HEALPIX', 'HEALPIX pixelisation')
-            hdu.header['ORDERING'] = (
-                'RING', 'Pixel ordering scheme, either RING or NESTED')
-            hdu.header['NSIDE'] = (configuration.nside,
-                                   'Healpix''s resolution parameter')
+            hdu.header['ORDERING'] = ('RING', 'Pixel ordering scheme, either RING or NESTED')
+            hdu.header['NSIDE'] = (configuration.nside, 'Healpix''s resolution parameter')
             hdu.header['FIRSTPIX'] = (0, 'First pixel # (0-based)')
             hdu.header['LASTPIX'] = (healpy.nside2npix(configuration.nside) - 1,
                                      'Last pixel # (0-based)')
-            hdu.header['INDXSCHM'] = (
-                'IMPLICIT', 'Indexing: IMPLICIT or EXPLICIT')
-            hdu.header['OBJECT'] = (
-                'FULLSKY', 'Sky coverage, either PARTIAL or FULLSKY')
+            hdu.header['INDXSCHM'] = ('IMPLICIT', 'Indexing: IMPLICIT or EXPLICIT')
+            hdu.header['OBJECT'] = ('FULLSKY', 'Sky coverage, either PARTIAL or FULLSKY')
 
             hdu_list.append(hdu)
         if configuration.save_convergence is not None:
@@ -1055,17 +939,14 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                        da_capo_results.cg_wall_times):
 
                 col = fits.Column(name='RZ', array=cur_cg_rz_list, format='1D')
-                hdu = fits.BinTableHDU.from_columns(
-                    [col], name='RZ{0:04d}'.format(idx))
-                hdu.header['DACAPORZ'] = (
-                    cur_dacapo_rz, 'DaCapo stopping factor')
+                hdu = fits.BinTableHDU.from_columns([col], name='RZ{0:04d}'.format(idx))
+                hdu.header['DACAPORZ'] = (cur_dacapo_rz, 'DaCapo stopping factor')
                 hdu.header['WTIME'] = (cg_wall_time, 'CG wall clock time [s]')
                 hdu_list.append(hdu)
         fits.HDUList(hdu_list).writeto(configuration.output_file_name,
                                        clobber=True)
         log.info('gains and offsets written into file "%s"',
                  configuration.output_file_name)
-
 
 if __name__ == '__main__':
     calibrate_main()

@@ -263,6 +263,7 @@ def write_output(file_name: str,
                            flagging=configuration.flagging)
     index_file.tod_info = info_list
     index_file.periods = periods
+    index_file.period_length = configuration.period_length
 
     hdu_list = [fits.PrimaryHDU()] + index_file.store_in_hdus()
     fits.HDUList(hdu_list).writeto(file_name, clobber=True)
