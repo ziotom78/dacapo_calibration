@@ -19,6 +19,8 @@ from astropy.io import fits
 from mpi4py import MPI
 import ftnroutines
 
+__version__ = '1.1.1'
+
 class Profiler:
     def __init__(self):
         self.start_time = None
@@ -947,7 +949,7 @@ def calibrate_main(configuration_file: str, debug_flag: bool,
                 hdu.header['WTIME'] = (cg_wall_time, 'CG wall clock time [s]')
                 hdu_list.append(hdu)
         fits.HDUList(hdu_list).writeto(configuration.output_file_name,
-                                       clobber=True)
+                                       overwrite=True)
         log.info('gains and offsets written into file "%s"',
                  configuration.output_file_name)
 

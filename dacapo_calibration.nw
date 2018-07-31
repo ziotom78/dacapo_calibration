@@ -920,6 +920,8 @@ from numba import jit
 import click
 import numpy as np
 
+__version__ = '1.1.1'
+
 <<Flagging code>>
 <<Datatypes used by [[index.py]]>>
 <<Functions to calculate the length of each period>>
@@ -1772,7 +1774,7 @@ def write_output(file_name: str,
     index_file.period_length = configuration.period_length
 
     hdu_list = [fits.PrimaryHDU()] + index_file.store_in_hdus()
-    fits.HDUList(hdu_list).writeto(file_name, clobber=True)
+    fits.HDUList(hdu_list).writeto(file_name, overwrite=True)
     log.info('file "%s" written successfully', file_name)
 @ %def write_output
 
@@ -1818,6 +1820,8 @@ from index import int_or_str, flag_mask, TODFileInfo, IndexFile
 from astropy.io import fits
 from mpi4py import MPI
 import ftnroutines
+
+__version__ = '1.1.1'
 
 <<Miscellaneous functions>>
 <<Datatypes used by [[calibrate.py]]>>
@@ -4958,12 +4962,12 @@ if configuration.save_convergence is not None:
 \subsection{Flushing data and closing the file}
 
 Now that every HDU is in [[hdu_list]], we save the file to disk. The
-[[clobber=True]] option tells Astropy not to complain if it must
+[[overwrite=True]] option tells Astropy not to complain if it must
 overwrite an existing file.
 
 <<Save the results of the calibration in the output file>>=
 fits.HDUList(hdu_list).writeto(configuration.output_file_name,
-                               clobber=True)
+                               overwrite=True)
 log.info('gains and offsets written into file "%s"',
          configuration.output_file_name)
 @
@@ -5881,7 +5885,7 @@ def write_simulated_tod(file_name: str, time: Any, theta: Any, phi: Any, tod: An
                                'Offset periods per gain period')
 
     hdulist = fits.HDUList([fits.PrimaryHDU(), hdu1, hdu2, hdu3])
-    hdulist.writeto(file_name, clobber=True)
+    hdulist.writeto(file_name, overwrite=True)
 @ %def write_simulated_tod
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

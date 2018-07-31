@@ -14,6 +14,7 @@ from numba import jit
 import click
 import numpy as np
 
+__version__ = '1.1.1'
 
 class FlagType(Enum):
     equality = 0
@@ -266,7 +267,7 @@ def write_output(file_name: str,
     index_file.period_length = configuration.period_length
 
     hdu_list = [fits.PrimaryHDU()] + index_file.store_in_hdus()
-    fits.HDUList(hdu_list).writeto(file_name, clobber=True)
+    fits.HDUList(hdu_list).writeto(file_name, overwrite=True)
     log.info('file "%s" written successfully', file_name)
 
 

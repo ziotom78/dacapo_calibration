@@ -54,7 +54,7 @@ def write_simulated_tod(file_name: str, time: Any, theta: Any, phi: Any, tod: An
                                'Offset periods per gain period')
 
     hdulist = fits.HDUList([fits.PrimaryHDU(), hdu1, hdu2, hdu3])
-    hdulist.writeto(file_name, clobber=True)
+    hdulist.writeto(file_name, overwrite=True)
 
 
 def generate_pointings(rpm1: float, rpm2: float, times: Any, num_of_samples:
