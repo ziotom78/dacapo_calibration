@@ -280,6 +280,9 @@ def read_calibrate_conf_file(file_name: str) -> CalibrateConfiguration:
 
         nside = dacapo_sect.getint('nside')
         mask_file_path = dacapo_sect.get('mask', fallback=None)
+        if mask_file_path.strip() == '':
+            mask_file_path = None
+
         periods_per_cal_constant = dacapo_sect.getint('periods_per_cal_constant')
         cg_stop = dacapo_sect.getfloat('cg_stop_value', 1e-9)
         cg_maxiter = dacapo_sect.getint('cg_max_iterations', 100)
