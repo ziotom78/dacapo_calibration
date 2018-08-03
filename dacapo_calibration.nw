@@ -1252,7 +1252,7 @@ length = 3.5
 file_name = ./output.fits
 \end{verbatim}
 As the example shows, INI files are split into sections marked by
-\texttt{[\cdot]}, e.g., \texttt{[flagging]}. Each sections contains
+\texttt{[.]}, e.g., \texttt{[flagging]}. Each sections contains
 key/parameter pairs in the form \texttt{key = parameter}. The
 [[configparser]] library implements a class, [[ConfigParser]], which
 parses this kind of files and offers a dictionary-like access to the
@@ -2004,9 +2004,9 @@ time elapsed since the last call to [[toc]], and so on.
 
         [[input_files]]& [[index_file]]& \texttt{str}& Path to the
     file created by [[index.py]]\\
-        & [[first_tod_index]& \texttt{int}& 0-based index of the first
+        & [[first_tod_index]]& \texttt{int}& 0-based index of the first
     TOD file to read, or -1 to read from the first element (default)\\
-        & [[last_tod_index]& \texttt{int}& 0-based index of the last
+        & [[last_tod_index]]& \texttt{int}& 0-based index of the last
     TOD file to read (inclusive), or -1 to read till the last element (default)\\
         & [[signal_hdu]]& \texttt{str}/\texttt{int} &
     Name/number of the tabular HDU containing the column with the TOD\\
@@ -2023,7 +2023,7 @@ time elapsed since the last call to [[toc]], and so on.
     longitude of the direction of the Solar system velocity [rad]\\
         & [[solsysspeed_m_s]]& \texttt{float}& Speed of the solar
     system with respect to the CMB rest frame [m/s]\\
-        & [[frequency_hz]& \texttt{float}& Frequency (in Hertz)
+        & [[frequency_hz]]& \texttt{float}& Frequency (in Hertz)
     to use for the calculation of relativistic corrections to the
     dipole. Default is "NaN" (no correction is applied)\\
         & [[nside]]& \texttt{int}& Resolution (NSIDE) of the sky map

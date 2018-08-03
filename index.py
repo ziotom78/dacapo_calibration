@@ -16,6 +16,7 @@ import numpy as np
 
 __version__ = '1.1.1'
 
+
 class FlagType(Enum):
     equality = 0
     bitwise_and = 1
