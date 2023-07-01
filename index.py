@@ -66,11 +66,11 @@ TODFileInfo = namedtuple('TODFileInfo',
 
 class IndexFile:
     def __init__(self,
-                 input_hdu: Union[int, str]=1,
-                 input_column: Union[int, str]=0,
-                 flag_hdu: Union[int, str]=1,
-                 flag_column: Union[int, str]=1,
-                 flagging: Flagging=None):
+                 input_hdu: Union[int, str] = 1,
+                 input_column: Union[int, str] = 0,
+                 flag_hdu: Union[int, str] = 1,
+                 flag_column: Union[int, str] = 1,
+                 flagging: Flagging = None):
         self.flagging = flagging
         self.tod_info = []
         self.periods = None

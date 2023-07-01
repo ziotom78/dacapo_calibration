@@ -3404,11 +3404,11 @@ def apply_f(a: OfsAndGains, pix_idx, dipole_map, sky_map):
 Note that we do not use MPI explicitly in the application of $\matr
 F$. However, remember that the overall TOD (which might well be one
 full year of data) is split among the MPI processes. The way
-[[aply_F]] is called is such that the result is a TOD which covers the
-same time span as the chunk of data currently loaded by the current
-MPI process: [[a]] only includes the offsets and gains owned by the
-process, and [[pixidx]] lists only the pixels ``seen'' by the samples
-loaded by the process.
+[[apply_F]] is called is such that the result is a TOD which covers
+the same time span as the chunk of data currently loaded by the
+current MPI process: [[a]] only includes the offsets and gains owned
+by the process, and [[pixidx]] lists only the pixels ``seen'' by the
+samples loaded by the process.
 
 Since this is a quite important concept to grasp, let's see it from
 another point of view. The case here is to compute a matrix-vector
@@ -4014,7 +4014,7 @@ def conjugate_gradient(mpi_comm, voltages, start_a: OfsAndGains, sky_map,
         if k >= max_iter:
             return best_a, list_of_stopping_factors
 
-        Ap = apply_A(mpi_comm, start_a, sky_map, pix_idx, mc, p)
+        Ap = apply_A(mpi_comm, a, sky_map, pix_idx, mc, p)
         gamma = old_r_dot / mpi_dot_prod(mpi_comm, p.a_vec, Ap)
         a.a_vec += gamma * p.a_vec
         r.a_vec -= gamma * Ap
@@ -4645,8 +4645,8 @@ DaCapoResults = namedtuple('DaCapoResults',
 @
 
 We are now ready to implement [[da_capo]], an implementation of the
-\DaCapo algorithm. The way this function split the job among the MPI
-processes is similar to [[conjugate_gradient]]: each process only
+\DaCapo{} algorithm. The way this function splits the job among the
+MPI processes is similar to [[conjugate_gradient]]: each process only
 ``sees'' the gain/offset periods that belong to it, and it keeps in
 memory only part of the TOD. The [[compute_map_corr]] function will be
 presented later; its purpose is to update the current estimate for the
