@@ -572,7 +572,7 @@ def conjugate_gradient(mpi_comm, voltages, start_a: OfsAndGains, sky_map,
         if k >= max_iter:
             return best_a, list_of_stopping_factors
 
-        Ap = apply_A(mpi_comm, start_a, sky_map, pix_idx, mc, p)
+        Ap = apply_A(mpi_comm, a, sky_map, pix_idx, mc, p)
         gamma = old_r_dot / mpi_dot_prod(mpi_comm, p.a_vec, Ap)
         a.a_vec += gamma * p.a_vec
         r.a_vec -= gamma * Ap
